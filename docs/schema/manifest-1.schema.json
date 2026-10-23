@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/dylanlabs/logdiag-collector/blob/main/docs/schema/manifest-1.schema.json",
+  "title": "LogDiag manifest 第 1 版",
+  "description": "每个日志包旁边的 manifest.json。LogDiag 网站据此选择解析器、按客户和批次归档。小版本只加字段、不改含义。",
+  "type": "object",
+  "required": ["schema", "tool", "collected_at", "customer", "batch_id", "device", "log", "files", "redaction"],
+  "properties": {
+    "schema": { "const": "logdiag.manifest/1" },
+    "tool": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "collected_at": { "type": "string", "format": "date-time", "description": "收集完成时间，带时区" },
+    "customer": { "type": "string", "description": "用户填写的客户名称，可以为空或只用代号" },
+    "batch_id": { "type": "string", "format": "uuid", "description": "同一次批量收集共用" },
+    "device": {
+      "type": "object",
+      "required": ["type", "vendor", "model", "serial", "controller"],
+      "properties": {
+        "type": { "enum": ["server", "storage", "network", "os"] },
+        "vendor": { "type": "string", "examples": ["Huawei", "xFusion", "Inspur"] },
+        "model": { "type": "string" },
+        "serial": { "type": "string" },
+        "hostname": { "type": "string" },
+        "mgmt_ip": { "type": "string", "description": "管理口地址，用户可设置不上传" },
+        "controller": {
+          "type": "object",
+          "required": ["type", "firmware"],
+          "properties": {
+            "type": { "type": "string", "examples": ["iBMC", "BMC", "iDRAC", "XCC", "iLO"] },
+            "firmware": { "type": "string" }
+          }
+        }
+      }
+    },
+    "log": {
+      "type": "object",
+      "required": ["type", "method"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(\\.[a-z0-9]+)+$",
+          "description": "厂商.产品线.日志，全小写，网站按它选解析器",
+          "examples": ["huawei.ibmc.dump", "xfusion.ibmc.dump", "inspur.bmc.onekeylog", "lenovo.xcc.ffdc", "dell.idrac.tsr", "hpe.ilo.ahs"]
+        },
+        "method": { "type": "string", "examples": ["redfish-oem", "redfish-standard", "bmc-web-api", "ssh"] },
+        "range": {
+          "type": "object",
+          "properties": { "from": { "type": "string" }, "to": { "type": "string" } }
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "size", "sha256", "role"],
+        "properties": {
+          "name": { "type": "string" },
+          "size": { "type": "integer", "minimum": 1 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "role": { "enum": ["main", "extra"] }
+        }
+      }
+    },
+    "redaction": {
+      "type": "object",
+      "required": ["applied"],
+      "properties": {
+        "applied": { "type": "boolean" },
+        "rules": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

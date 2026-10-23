@@ -1,0 +1,289 @@
+{
+  "format": "logdiag.httprec/1",
+  "note": "合成：超聚变固件的 OEM 键假定为 xFusion（未经真机核对），设备端任务以 Exception 结束。用于测试按实际 OEM 键查找动作和任务失败的处理。",
+  "interactions": [
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/",
+            "RedfishVersion": "1.0.2",
+            "UUID": "00000000-0000-4000-8000-000000000001",
+            "Systems": {
+              "@odata.id": "/redfish/v1/Systems"
+            },
+            "Managers": {
+              "@odata.id": "/redfish/v1/Managers"
+            },
+            "Chassis": {
+              "@odata.id": "/redfish/v1/Chassis"
+            },
+            "SessionService": {
+              "@odata.id": "/redfish/v1/SessionService"
+            },
+            "Links": {
+              "Sessions": {
+                "@odata.id": "/redfish/v1/SessionService/Sessions"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/redfish/v1/SessionService/Sessions",
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "UserName": "admin",
+            "Password": "REDACTED"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-Auth-Token": [
+            "REDACTED"
+          ],
+          "Location": [
+            "/redfish/v1/SessionService/Sessions/x9y8z7"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/SessionService/Sessions/x9y8z7",
+            "Id": "x9y8z7",
+            "UserName": "admin"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "Members": [
+              {
+                "@odata.id": "/redfish/v1/Managers/1"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers/1"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers/1",
+            "Id": "1",
+            "Name": "Manager",
+            "ManagerType": "BMC",
+            "FirmwareVersion": "3.08",
+            "Model": "iBMC",
+            "Actions": {
+              "#Manager.Reset": {
+                "target": "/redfish/v1/Managers/1/Actions/Manager.Reset"
+              },
+              "Oem": {
+                "xFusion": {
+                  "#Manager.Dump": {
+                    "target": "/redfish/v1/Managers/1/Actions/Oem/xFusion/Manager.Dump",
+                    "Type@Redfish.AllowableValues": [
+                      "URI"
+                    ]
+                  },
+                  "#Manager.GeneralDownload": {
+                    "target": "/redfish/v1/Managers/1/Actions/Oem/xFusion/Manager.GeneralDownload",
+                    "TransferProtocol@Redfish.AllowableValues": [
+                      "HTTPS",
+                      "SCP",
+                      "SFTP",
+                      "CIFS",
+                      "NFS"
+                    ]
+                  }
+                }
+              }
+            },
+            "Oem": {
+              "xFusion": {}
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "Members": [
+              {
+                "@odata.id": "/redfish/v1/Systems/1"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems/1"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems/1",
+            "Id": "1",
+            "Manufacturer": "xFusion",
+            "Model": "2288H V6",
+            "SerialNumber": "2102312SYNTH0002",
+            "HostName": "db01",
+            "PowerState": "On"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/redfish/v1/Managers/1/Actions/Oem/xFusion/Manager.Dump",
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "Type": "URI",
+            "Content": "/tmp/web/dump_info.tar.gz"
+          }
+        }
+      },
+      "response": {
+        "status": 202,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/TaskService/Tasks/1",
+            "@odata.type": "#Task.v1_0_2.Task",
+            "Id": "1",
+            "Name": "Export Dump File Task",
+            "TaskState": "Running",
+            "StartTime": "2026-10-26T10:00:00+08:00",
+            "Messages": [],
+            "Oem": {
+              "xFusion": {
+                "TaskPercentage": null
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/TaskService/Tasks/1"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/TaskService/Tasks/1",
+            "@odata.type": "#Task.v1_0_2.Task",
+            "Id": "1",
+            "Name": "Export Dump File Task",
+            "TaskState": "Exception",
+            "StartTime": "2026-10-26T10:00:00+08:00",
+            "Messages": {
+              "MessageId": "iBMC.1.0.CollectingInfoFailed",
+              "Message": "Collecting information failed.",
+              "Severity": "Warning"
+            },
+            "Oem": {
+              "xFusion": {
+                "TaskPercentage": null
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "path": "/redfish/v1/SessionService/Sessions/x9y8z7"
+      },
+      "response": {
+        "status": 200
+      }
+    }
+  ]
+}

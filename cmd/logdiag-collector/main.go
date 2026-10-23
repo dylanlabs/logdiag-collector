@@ -27,6 +27,7 @@ const usage = `LogDiag Collector：服务器、存储、网络设备日志一键
   logdiag-collector               启动本机界面（与 ui 相同）
   logdiag-collector ui [选项]      启动本机界面
   logdiag-collector probe [选项]   只读探测一台设备的 Redfish 接口，可保存诊断记录
+  logdiag-collector collect [选项] 对一台设备一键收集日志包（华为、超聚变、浪潮）
   logdiag-collector version       显示版本
 
 查看子命令的选项：logdiag-collector <子命令> -h
@@ -59,6 +60,8 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return runUI(ctx, args, stdout, stderr)
 	case "probe":
 		return runProbe(ctx, args, stdin, stdout, stderr)
+	case "collect":
+		return runCollect(ctx, args, stdin, stdout, stderr)
 	case "version":
 		fmt.Fprintln(stdout, buildinfo.Get())
 		return 0

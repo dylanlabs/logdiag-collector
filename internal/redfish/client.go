@@ -32,6 +32,8 @@ type Options struct {
 	HTTPClient *http.Client
 	// UserAgent 为空时使用 "LogDiagCollector"。
 	UserAgent string
+	// Sleep 是重试和轮询时的等待函数，为 nil 时真实等待。回放测试用它跳过等待。
+	Sleep func(context.Context, time.Duration) error
 }
 
 // Client 是一台设备的 Redfish 客户端，可以被多个 goroutine 同时使用。
@@ -66,6 +68,9 @@ func New(address string, opts Options) (*Client, error) {
 	}
 	if c.userAgent == "" {
 		c.userAgent = "LogDiagCollector"
+	}
+	if opts.Sleep != nil {
+		c.sleep = opts.Sleep
 	}
 	return c, nil
 }
@@ -249,12 +254,36 @@ func (c *Client) Post(ctx context.Context, ref string, body any) (*Response, err
 
 // Download 把文件流式写入 w，返回字节数和 SHA-256。
 func (c *Client) Download(ctx context.Context, ref string, w io.Writer) (int64, string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.resolve(ref), nil)
+	return c.download(ctx, http.MethodGet, ref, nil, w)
+}
+
+// DownloadAction 调用直接返回文件内容的动作（例如华为的 Manager.GeneralDownload），
+// 把文件流式写入 w。和 Post 一样不重试。
+func (c *Client) DownloadAction(ctx context.Context, target string, body any, w io.Writer) (int64, string, error) {
+	if body == nil {
+		body = struct{}{}
+	}
+	return c.download(ctx, http.MethodPost, target, body, w)
+}
+
+func (c *Client) download(ctx context.Context, method, ref string, body any, w io.Writer) (int64, string, error) {
+	var rdr io.Reader
+	if body != nil {
+		data, err := json.Marshal(body)
+		if err != nil {
+			return 0, "", err
+		}
+		rdr = bytes.NewReader(data)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, c.resolve(ref), rdr)
 	if err != nil {
 		return 0, "", err
 	}
 	req.Header.Set("Accept", "*/*")
 	req.Header.Set("User-Agent", c.userAgent)
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	if tok := c.authToken(); tok != "" {
 		req.Header.Set("X-Auth-Token", tok)
 	}
@@ -265,7 +294,7 @@ func (c *Client) Download(ctx context.Context, ref string, w io.Writer) (int64, 
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		data, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
-		return 0, "", newHTTPError(http.MethodGet, pathOf(ref), &Response{StatusCode: resp.StatusCode, Header: resp.Header, Body: data})
+		return 0, "", newHTTPError(method, pathOf(ref), &Response{StatusCode: resp.StatusCode, Header: resp.Header, Body: data})
 	}
 	h := sha256.New()
 	n, err := io.Copy(io.MultiWriter(w, h), resp.Body)

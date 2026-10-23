@@ -1,0 +1,334 @@
+{
+  "format": "logdiag.httprec/1",
+  "note": "合成：依据浪潮官方 SDK inspursmsdk 2.4.0 的接口行为（只参考接口，不复制代码），未经真机核对。M6/M7 流程：查进度 → 触发 → 轮询 rate 到 100 → 下载 logfile。先删掉识别用的 Redfish 会话。",
+  "interactions": [
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/",
+            "RedfishVersion": "1.0.2",
+            "UUID": "00000000-0000-4000-8000-000000000001",
+            "Systems": {
+              "@odata.id": "/redfish/v1/Systems"
+            },
+            "Managers": {
+              "@odata.id": "/redfish/v1/Managers"
+            },
+            "Chassis": {
+              "@odata.id": "/redfish/v1/Chassis"
+            },
+            "SessionService": {
+              "@odata.id": "/redfish/v1/SessionService"
+            },
+            "Links": {
+              "Sessions": {
+                "@odata.id": "/redfish/v1/SessionService/Sessions"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/redfish/v1/SessionService/Sessions",
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "UserName": "admin",
+            "Password": "REDACTED"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-Auth-Token": [
+            "REDACTED"
+          ],
+          "Location": [
+            "/redfish/v1/SessionService/Sessions/r1"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/SessionService/Sessions/r1",
+            "Id": "r1",
+            "UserName": "admin"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "Members": [
+              {
+                "@odata.id": "/redfish/v1/Managers/1"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers/1"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers/1",
+            "Id": "1",
+            "ManagerType": "BMC",
+            "FirmwareVersion": "4.02.00",
+            "Actions": {
+              "#Manager.Reset": {
+                "target": "/redfish/v1/Managers/1/Actions/Manager.Reset"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "Members": [
+              {
+                "@odata.id": "/redfish/v1/Systems/1"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems/1"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems/1",
+            "Id": "1",
+            "Manufacturer": "Inspur",
+            "Model": "NF5280M6",
+            "SerialNumber": "SYNTH21A0001"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "path": "/redfish/v1/SessionService/Sessions/r1"
+      },
+      "response": {
+        "status": 200
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/session",
+        "header": {
+          "Content-Type": [
+            "application/x-www-form-urlencoded"
+          ]
+        },
+        "body": {
+          "text": "password=REDACTED&username=admin"
+        }
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "Set-Cookie": [
+            "REDACTED"
+          ]
+        },
+        "body": {
+          "json": {
+            "ok": 0,
+            "privilege": 4,
+            "extendedpriv": 259,
+            "CSRFToken": "REDACTED"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/api/logs/onekeylog/progress"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "rate": 100,
+            "status": 0
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/logs/onekeylog/trigger",
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {}
+        }
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {}
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/api/logs/onekeylog/progress"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "rate": 30,
+            "status": 254
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/api/logs/onekeylog/progress"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "rate": 100,
+            "status": 0
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/api/logs/onekeylog/logfile"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/octet-stream"
+          ],
+          "Content-Length": [
+            "154"
+          ]
+        },
+        "body": {
+          "base64": "H4sIAAAAAAAC/+3SQQrCMBBA0aw9xZxAk5DGM7jwEEWjFkNTknTR25sKblyLCP4Hw4dZzWLSGO5hiem6W2c4x22r+izdeOeebd6rdbdXprPed9b4dW+sdkaJVl8wl9rndor6T2UZ6y3U4SSHsUxzlqOX9PoJuaQsOUyxX6SGUstGAQAAAAAAAAAAAAAAAAB+wwNm10FDACgAAA=="
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "path": "/api/session"
+      },
+      "response": {
+        "status": 200
+      }
+    }
+  ]
+}

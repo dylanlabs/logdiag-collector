@@ -1,0 +1,238 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// Package drivers 识别设备、选择采集驱动并执行一次收集。
+//
+// 识别流程：匿名读 Redfish 服务根 → 登录 → 读第一个系统和管理器，
+// 得到厂商、型号、序列号、BMC 固件 → 按厂商选驱动。v0.1 的服务器品牌都支持 Redfish。
+package drivers
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"net/url"
+	"slices"
+	"strings"
+	"time"
+
+	"github.com/dylanlabs/logdiag-collector/internal/collect"
+	"github.com/dylanlabs/logdiag-collector/internal/collect/huawei"
+	"github.com/dylanlabs/logdiag-collector/internal/collect/inspur"
+	"github.com/dylanlabs/logdiag-collector/internal/redfish"
+)
+
+// Brand 是命令行 --brand 可选的品牌。
+type Brand struct {
+	Key    string // huawei、xfusion、inspur
+	Vendor string // 写进 manifest 的厂商名
+	Driver collect.Driver
+}
+
+// Brands 列出已支持的品牌。识别时 xFusion 要排在 Huawei 前面：超聚变部分固件仍保留 Huawei 的 OEM 键。
+var Brands = []Brand{
+	{"xfusion", "xFusion", huawei.Driver{}},
+	{"huawei", "Huawei", huawei.Driver{}},
+	{"inspur", "Inspur", inspur.Driver{}},
+}
+
+// keywords 是识别品牌时在厂商名、OEM 键里查找的词（小写）。
+var keywords = map[string][]string{
+	"xfusion": {"xfusion"},
+	"huawei":  {"huawei"},
+	"inspur":  {"inspur", "ieit"}, // 浪潮信息新固件可能用 IEIT
+}
+
+// BrandByKey 按命令行写法查找品牌。
+func BrandByKey(key string) (Brand, bool) {
+	i := slices.IndexFunc(Brands, func(b Brand) bool { return strings.EqualFold(b.Key, key) })
+	if i < 0 {
+		return Brand{}, false
+	}
+	return Brands[i], true
+}
+
+// Detect 依次按系统的制造商、服务根的 Vendor、OEM 键、产品名判断品牌。
+func Detect(root *redfish.ServiceRoot, system, manager *redfish.Resource) (Brand, bool) {
+	var sources [][]string
+	if system != nil {
+		sources = append(sources, []string{system.Manufacturer})
+	}
+	if root != nil {
+		sources = append(sources, []string{root.Vendor}, keysOf(root.Oem))
+	}
+	if manager != nil {
+		sources = append(sources, keysOf(manager.Oem))
+	}
+	if root != nil {
+		sources = append(sources, []string{root.Product})
+	}
+	for _, src := range sources {
+		text := strings.ToLower(strings.Join(src, " "))
+		if strings.TrimSpace(text) == "" {
+			continue
+		}
+		for _, b := range Brands {
+			for _, kw := range keywords[b.Key] {
+				if strings.Contains(text, kw) {
+					return b, true
+				}
+			}
+		}
+	}
+	return Brand{}, false
+}
+
+func keysOf[V any](m map[string]V) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	return keys
+}
+
+// Request 是一次收集的参数。
+type Request struct {
+	Address  string // 管理口地址
+	User     string
+	Password string
+	Brand    string // 为空时自动识别
+
+	HTTPClient *http.Client // 由调用方配置证书锁定、老设备 TLS 和录制
+	UserAgent  string
+	Store      *collect.Store
+	Progress   func(collect.Event)
+	Sleep      func(context.Context, time.Duration) error // 测试用
+}
+
+// Collect 识别设备并收集一次日志包。会话在结束、失败或取消时都会删除。
+func Collect(ctx context.Context, req Request) (*collect.Result, error) {
+	report := func(stage collect.Stage, msg string) {
+		if req.Progress != nil {
+			req.Progress(collect.Event{Stage: stage, Percent: -1, Message: msg})
+		}
+	}
+	var brand Brand
+	if req.Brand != "" {
+		var ok bool
+		if brand, ok = BrandByKey(req.Brand); !ok {
+			return nil, fmt.Errorf("不认识品牌 %q，可选：%s", req.Brand, brandKeys())
+		}
+	}
+
+	c, err := redfish.New(req.Address, redfish.Options{HTTPClient: req.HTTPClient, UserAgent: req.UserAgent, Sleep: req.Sleep})
+	if err != nil {
+		return nil, err
+	}
+	job := &collect.Job{
+		BaseURL:    c.BaseURL(),
+		HTTPClient: req.HTTPClient,
+		UserAgent:  req.UserAgent,
+		User:       req.User,
+		Password:   req.Password,
+		Store:      req.Store,
+		Progress:   req.Progress,
+		Sleep:      req.Sleep,
+	}
+	if u, err := url.Parse(c.BaseURL()); err == nil {
+		job.Device.Address = u.Hostname()
+	}
+
+	report(collect.StageProbe, "读取 Redfish 服务根")
+	root, err := c.ServiceRoot(ctx)
+	var httpErr *redfish.HTTPError
+	switch {
+	case err == nil:
+	case errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound && brand.Key == "inspur":
+		// 关闭了 Redfish 的浪潮设备：跳过识别，直接走网页接口。
+		return brand.Driver.Collect(ctx, job)
+	case errors.As(err, &httpErr):
+		// 个别固件的服务根也要求登录，登录后再读。
+	default:
+		return nil, fmt.Errorf("读取服务根：%w", err)
+	}
+
+	report(collect.StageProbe, "登录 Redfish 读取型号和序列号")
+	if err := c.Login(ctx, req.User, req.Password); err != nil {
+		return nil, fmt.Errorf("登录：%w", err)
+	}
+	defer c.Logout(ctx)
+	job.Redfish = c
+
+	system, manager, err := identify(ctx, c, root)
+	if err != nil {
+		return nil, err
+	}
+	job.Manager = manager
+	if brand.Key == "" {
+		var ok bool
+		if brand, ok = Detect(root, system, manager); !ok {
+			return nil, fmt.Errorf("没认出设备品牌（制造商 %q），可用 --brand 指定：%s：%w",
+				system.Manufacturer, brandKeys(), redfish.ErrUnsupported)
+		}
+	}
+	job.Device.Type = "server"
+	job.Device.Vendor = brand.Vendor
+	job.Device.Model = strings.TrimSpace(system.Model)
+	job.Device.Serial = strings.TrimSpace(system.SerialNumber)
+	job.Device.Hostname = strings.TrimSpace(system.HostName)
+	job.Device.Controller.Firmware = strings.TrimSpace(manager.FirmwareVersion)
+
+	report(collect.StageProbe, fmt.Sprintf("识别为 %s %s（序列号 %s，BMC 固件 %s），使用驱动 %s",
+		brand.Vendor, job.Device.Model, job.Device.Serial, job.Device.Controller.Firmware, brand.Driver.Name()))
+	res, err := brand.Driver.Collect(ctx, job)
+	if err != nil {
+		return nil, err
+	}
+	report(collect.StageDone, "已保存到 "+res.Path)
+	return res, nil
+}
+
+// identify 读第一个系统和第一个管理器。系统读不到时只用管理器的信息。
+func identify(ctx context.Context, c *redfish.Client, root *redfish.ServiceRoot) (*redfish.Resource, *redfish.Resource, error) {
+	systems, managers := "/redfish/v1/Systems", "/redfish/v1/Managers"
+	if root != nil {
+		if root.Systems.ID != "" {
+			systems = root.Systems.ID
+		}
+		if root.Managers.ID != "" {
+			managers = root.Managers.ID
+		}
+	}
+	manager, err := first(ctx, c, managers)
+	if err != nil {
+		return nil, nil, fmt.Errorf("读取管理器：%w", err)
+	}
+	system, err := first(ctx, c, systems)
+	if err != nil {
+		system = &redfish.Resource{}
+	}
+	return system, manager, nil
+}
+
+func first(ctx context.Context, c *redfish.Client, coll string) (*redfish.Resource, error) {
+	members, err := c.Members(ctx, coll)
+	if err != nil {
+		return nil, err
+	}
+	if len(members) == 0 {
+		return nil, fmt.Errorf("%s 是空的：%w", coll, redfish.ErrUnsupported)
+	}
+	var r redfish.Resource
+	if _, err := c.Get(ctx, members[0], &r); err != nil {
+		return nil, err
+	}
+	if r.ODataID == "" {
+		r.ODataID = members[0]
+	}
+	return &r, nil
+}
+
+func brandKeys() string {
+	var keys []string
+	for _, b := range Brands {
+		keys = append(keys, b.Key)
+	}
+	return strings.Join(keys, "、")
+}
