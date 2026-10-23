@@ -1,0 +1,50 @@
+{
+  "format": "logdiag.httprec/1",
+  "note": "合成：按 Dell 官方脚本 SupportAssistCollectionLocalREDFISH.py 描述的流程编写——Location 给出 Job 地址，轮询 TaskService/Tasks/<JobID>，完成时 Location 头指向 sacollect.zip。字段未经真机核对。",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/redfish/v1/Managers/iDRAC.Embedded.1/Oem/Dell/DellLCService/Actions/DellLCService.SupportAssistCollection",
+        "header": { "Content-Type": ["application/json"] },
+        "body": { "json": { "ShareType": "Local", "DataSelectorArrayIn": ["HWData", "TTYLogs"] } }
+      },
+      "response": {
+        "status": 202,
+        "header": { "Location": ["/redfish/v1/Managers/iDRAC.Embedded.1/Jobs/JID_612345678901"] }
+      }
+    },
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/TaskService/Tasks/JID_612345678901" },
+      "response": {
+        "status": 202,
+        "header": { "Content-Type": ["application/json"] },
+        "body": { "json": { "@odata.id": "/redfish/v1/TaskService/Tasks/JID_612345678901", "Id": "JID_612345678901", "TaskState": "Running", "PercentComplete": 5, "Messages": [{ "MessageId": "SRV088", "Message": "The SupportAssist Collection operation is started." }] } }
+      }
+    },
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/TaskService/Tasks/JID_612345678901" },
+      "response": {
+        "status": 202,
+        "header": { "Content-Type": ["application/json"] },
+        "body": { "json": { "@odata.id": "/redfish/v1/TaskService/Tasks/JID_612345678901", "Id": "JID_612345678901", "TaskState": "Running", "PercentComplete": 50, "Messages": [{ "MessageId": "SRV090", "Message": "Collecting hardware data." }] } }
+      }
+    },
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/TaskService/Tasks/JID_612345678901" },
+      "response": {
+        "status": 200,
+        "header": { "Content-Type": ["application/json"], "Location": ["/redfish/v1/Dell/sacollect.zip"] },
+        "body": { "json": { "@odata.id": "/redfish/v1/TaskService/Tasks/JID_612345678901", "Id": "JID_612345678901", "TaskState": "Completed", "TaskStatus": "OK", "PercentComplete": 100, "Messages": [{ "MessageId": "SRV081", "Message": "The SupportAssist Collection operation is completed successfully." }] } }
+      }
+    },
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/Dell/sacollect.zip" },
+      "response": {
+        "status": 200,
+        "header": { "Content-Type": ["application/zip"] },
+        "body": { "base64": "UEsDBBQAAAAAAAAAIVxvjTkFJAAAACQAAAARAAAAVFNSX3N5bnRoZXRpYy50eHRzeW50aGV0aWMgc3VwcG9ydCBhc3Npc3QgY29sbGVjdGlvbgpQSwECFAMUAAAAAAAAACFcb405BSQAAAAkAAAAEQAAAAAAAAAAAAAAgAEAAAAAVFNSX3N5bnRoZXRpYy50eHRQSwUGAAAAAAEAAQA/AAAAUwAAAAAA" }
+      }
+    }
+  ]
+}

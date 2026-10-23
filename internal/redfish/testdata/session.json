@@ -1,0 +1,73 @@
+{
+  "format": "logdiag.httprec/1",
+  "note": "合成：按 DMTF Redfish 规范（DSP0266）的会话流程编写，不是真机录制。Location 用绝对地址，模拟 HPE iLO 的写法。",
+  "interactions": [
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/" },
+      "response": {
+        "status": 200,
+        "header": { "Content-Type": ["application/json;charset=utf-8"] },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/",
+            "@odata.type": "#ServiceRoot.v1_16_0.ServiceRoot",
+            "Id": "RootService",
+            "Name": "Root Service",
+            "RedfishVersion": "1.17.0",
+            "UUID": "92384634-2938-2342-8820-489239905423",
+            "Vendor": "Contoso",
+            "Product": "Contoso BMC",
+            "Systems": { "@odata.id": "/redfish/v1/Systems" },
+            "Managers": { "@odata.id": "/redfish/v1/Managers" },
+            "Chassis": { "@odata.id": "/redfish/v1/Chassis" },
+            "SessionService": { "@odata.id": "/redfish/v1/SessionService" },
+            "Links": { "Sessions": { "@odata.id": "/redfish/v1/SessionService/Sessions" } }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/redfish/v1/SessionService/Sessions",
+        "header": { "Content-Type": ["application/json"] },
+        "body": { "json": { "UserName": "admin", "Password": "REDACTED" } }
+      },
+      "response": {
+        "status": 201,
+        "header": {
+          "Content-Type": ["application/json;charset=utf-8"],
+          "Location": ["{{base}}/redfish/v1/SessionService/Sessions/1a2b3c"],
+          "X-Auth-Token": ["REDACTED"]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/SessionService/Sessions/1a2b3c",
+            "Id": "1a2b3c",
+            "Name": "User Session",
+            "UserName": "admin"
+          }
+        }
+      }
+    },
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/Managers" },
+      "response": {
+        "status": 200,
+        "header": { "Content-Type": ["application/json;charset=utf-8"] },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers",
+            "Name": "Manager Collection",
+            "Members": [{ "@odata.id": "/redfish/v1/Managers/1" }],
+            "Members@odata.count": 1
+          }
+        }
+      }
+    },
+    {
+      "request": { "method": "DELETE", "path": "/redfish/v1/SessionService/Sessions/1a2b3c" },
+      "response": { "status": 204 }
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "format": "logdiag.httprec/1",
+  "note": "合成：设备端任务以 Exception 结束，不是真机录制。",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/redfish/v1/Systems/1/LogServices/DiagnosticLog/Actions/LogService.CollectDiagnosticData",
+        "header": { "Content-Type": ["application/json"] },
+        "body": { "json": { "DiagnosticDataType": "Manager" } }
+      },
+      "response": {
+        "status": 202,
+        "header": { "Location": ["/redfish/v1/TaskService/TaskMonitors/9"] }
+      }
+    },
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/TaskService/TaskMonitors/9" },
+      "response": {
+        "status": 202,
+        "header": { "Content-Type": ["application/json"] },
+        "body": { "json": { "@odata.id": "/redfish/v1/TaskService/Tasks/9", "Id": "9", "TaskState": "Running", "PercentComplete": 30 } }
+      }
+    },
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/TaskService/TaskMonitors/9" },
+      "response": {
+        "status": 200,
+        "header": { "Content-Type": ["application/json"] },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/TaskService/Tasks/9",
+            "Id": "9",
+            "TaskState": "Exception",
+            "TaskStatus": "Critical",
+            "PercentComplete": 30,
+            "Messages": [
+              {
+                "MessageId": "Base.1.16.0.InternalError",
+                "Message": "The request failed due to an internal service error.  The service is still operational.",
+                "Severity": "Critical"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

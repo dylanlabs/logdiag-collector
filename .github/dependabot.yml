@@ -1,0 +1,11 @@
+# 每周检查 Go 依赖和 GitHub Actions 的新版本（Actions 按提交 SHA 固定，由 Dependabot 更新）。
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

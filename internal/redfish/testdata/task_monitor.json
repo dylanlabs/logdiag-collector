@@ -1,0 +1,84 @@
+{
+  "format": "logdiag.httprec/1",
+  "note": "合成：按 DMTF LogService.CollectDiagnosticData 和任务监视器的规范流程编写（联想 XCC2/XCC3 文档描述的也是这条流程），不是真机录制。",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/redfish/v1/Systems/1/LogServices/DiagnosticLog/Actions/LogService.CollectDiagnosticData",
+        "header": { "Content-Type": ["application/json"] },
+        "body": { "json": { "DiagnosticDataType": "Manager" } }
+      },
+      "response": {
+        "status": 202,
+        "header": {
+          "Content-Type": ["application/json"],
+          "Location": ["/redfish/v1/TaskService/TaskMonitors/7"],
+          "Retry-After": ["10"]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/TaskService/Tasks/7",
+            "@odata.type": "#Task.v1_7_0.Task",
+            "Id": "7",
+            "Name": "Collect diagnostic data",
+            "TaskState": "New",
+            "TaskStatus": "OK",
+            "PercentComplete": 0,
+            "TaskMonitor": "/redfish/v1/TaskService/TaskMonitors/7"
+          }
+        }
+      }
+    },
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/TaskService/TaskMonitors/7" },
+      "response": {
+        "status": 202,
+        "header": { "Content-Type": ["application/json"], "Retry-After": ["10"] },
+        "body": { "json": { "@odata.id": "/redfish/v1/TaskService/Tasks/7", "Id": "7", "TaskState": "Running", "TaskStatus": "OK", "PercentComplete": 10 } }
+      }
+    },
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/TaskService/TaskMonitors/7" },
+      "response": {
+        "status": 202,
+        "header": { "Content-Type": ["application/json"], "Retry-After": ["120"] },
+        "body": { "json": { "@odata.id": "/redfish/v1/TaskService/Tasks/7", "Id": "7", "TaskState": "Running", "TaskStatus": "OK", "PercentComplete": 60 } }
+      }
+    },
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/TaskService/TaskMonitors/7" },
+      "response": {
+        "status": 201,
+        "header": { "Location": ["/redfish/v1/Systems/1/LogServices/DiagnosticLog/Entries/5"] }
+      }
+    },
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/Systems/1/LogServices/DiagnosticLog/Entries/5" },
+      "response": {
+        "status": 200,
+        "header": { "Content-Type": ["application/json"] },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems/1/LogServices/DiagnosticLog/Entries/5",
+            "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+            "Id": "5",
+            "Name": "Manager diagnostic data",
+            "EntryType": "Oem",
+            "DiagnosticDataType": "Manager",
+            "AdditionalDataSizeBytes": 59,
+            "AdditionalDataURI": "/redfish/v1/Systems/1/LogServices/DiagnosticLog/Entries/5/attachment"
+          }
+        }
+      }
+    },
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/Systems/1/LogServices/DiagnosticLog/Entries/5/attachment" },
+      "response": {
+        "status": 200,
+        "header": { "Content-Type": ["application/octet-stream"] },
+        "body": { "base64": "H4sIAAAAAAAC/yuuzCvJSC3JTFZIyUxMz8svBjMTSxIV0vKLFIpSC3ISKxVKUotLirkAIalloSsAAAA=" }
+      }
+    }
+  ]
+}

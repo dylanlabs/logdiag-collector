@@ -1,0 +1,63 @@
+# 推送 v* 标签时发布：测试 → 编译 → SHA256SUMS → 构建证明 → GitHub Release。
+# 发布方式：git tag v0.1.0 && git push origin v0.1.0
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: 发布 ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write     # 创建 Release
+      id-token: write     # 构建证明需要 OIDC 令牌
+      attestations: write # 保存构建证明
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: 测试
+        run: go test -count=1 ./...
+
+      - name: 编译
+        run: scripts/build.sh "$GITHUB_REF_NAME" amd64
+
+      - name: 生成 SHA256SUMS
+        working-directory: dist
+        run: sha256sum -- *.exe | tee SHA256SUMS
+
+      # 构建证明（SLSA provenance）让任何人都能核对 exe 是由本仓库这次提交在 GitHub Actions 上编出来的。
+      # GitHub 免费账号只能给公开仓库生成，私有期间跳过。
+      - name: 构建证明
+        if: ${{ !github.event.repository.private }}
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: dist/*.exe
+
+      - name: 私有仓库跳过构建证明
+        if: ${{ github.event.repository.private }}
+        run: echo "::warning::仓库目前是私有的，GitHub 免费账号只能为公开仓库生成构建证明，本次发布没有附构建证明。"
+
+      - name: 创建 Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          flags=()
+          if [[ "$TAG" == *-* ]]; then flags+=(--prerelease); fi
+          gh release create "$TAG" dist/*.exe dist/SHA256SUMS \
+            --verify-tag \
+            --title "LogDiag Collector ${TAG#v}" \
+            --notes-file .github/release-notes.md \
+            --generate-notes \
+            "${flags[@]}"
