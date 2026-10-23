@@ -333,3 +333,48 @@ func TestDetect(t *testing.T) {
 		t.Errorf("BrandByKey(XFusion) = %+v", b)
 	}
 }
+
+// TestIdentify 复用华为收集记录的识别部分：登录、读管理器和系统、退出会话，不碰收集接口。
+func TestIdentify(t *testing.T) {
+	c, err := httprec.Load(filepath.Join("testdata", "huawei_dump.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.Interactions = slices.DeleteFunc(c.Interactions, func(it *httprec.Interaction) bool {
+		return strings.Contains(it.Request.Path, "/Actions/") || strings.Contains(it.Request.Path, "/TaskService/")
+	})
+	p := httprec.NewReplayer(c)
+	hc := redfish.NewHTTPClient(redfish.TransportOptions{})
+	hc.Transport = p
+	id, err := Identify(context.Background(), Request{Address: "bmc.replay.test", User: "admin", Password: "s3cret!", HTTPClient: hc})
+	if err != nil {
+		t.Fatalf("Identify: %v", err)
+	}
+	if id.Brand.Key != "huawei" || id.Vendor() != "Huawei" || id.Model != "2288H V5" || id.Serial != "2102311SYNTH0001" ||
+		id.Hostname != "db01" || id.Firmware != "3.08" {
+		t.Errorf("Identity = %+v", id)
+	}
+	if left := p.Remaining(); len(left) > 0 {
+		t.Errorf("没有退出会话或漏了请求：%v", left)
+	}
+	if missed := p.Missed(); len(missed) > 0 {
+		t.Errorf("发出了记录里没有的请求：%v", missed)
+	}
+}
+
+func TestIdentifyAuthFailed(t *testing.T) {
+	p, err := httprec.LoadReplayer(filepath.Join("..", "redfish", "testdata", "session_unauthorized.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cap := &capture{next: p}
+	hc := redfish.NewHTTPClient(redfish.TransportOptions{})
+	hc.Transport = cap
+	_, err = Identify(context.Background(), Request{Address: "bmc.replay.test", User: "admin", Password: "wrong", HTTPClient: hc})
+	if redfish.KindOf(err) != redfish.KindAuth {
+		t.Fatalf("err = %v，应为认证失败", err)
+	}
+	if n := len(cap.find("POST", "/redfish/v1/SessionService/Sessions")); n != 1 {
+		t.Errorf("认证失败后不应重试登录，实际登录了 %d 次", n)
+	}
+}

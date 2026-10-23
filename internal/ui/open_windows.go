@@ -4,6 +4,7 @@ package ui
 
 import (
 	"fmt"
+	"os"
 	"syscall"
 	"unsafe"
 )
@@ -37,4 +38,16 @@ func shellExecute(file, params string) error {
 		return fmt.Errorf("无法打开 %s（错误码 %d）", file, r)
 	}
 	return nil
+}
+
+// OpenFolder 在资源管理器里打开文件夹；path 是文件时打开所在文件夹并选中它。
+func OpenFolder(path string) error {
+	st, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	if st.IsDir() {
+		return shellExecute(path, "")
+	}
+	return shellExecute("explorer.exe", `/select,"`+path+`"`)
 }

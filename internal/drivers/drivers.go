@@ -189,6 +189,57 @@ func Collect(ctx context.Context, req Request) (*collect.Result, error) {
 	return res, nil
 }
 
+// Identity 是登录后读到的设备信息，设备表的“识别”用它回填。
+type Identity struct {
+	Brand        Brand  // 没认出时为零值（Key 为空）
+	Manufacturer string // 系统的制造商原文
+	Model        string
+	Serial       string
+	Hostname     string
+	Firmware     string // BMC 固件版本
+}
+
+// Vendor 返回写进设备表的品牌：认出时用驱动的厂商名，否则用制造商原文。
+func (id *Identity) Vendor() string {
+	if id.Brand.Vendor != "" {
+		return id.Brand.Vendor
+	}
+	return id.Manufacturer
+}
+
+// Identify 登录读取型号、序列号、主机名和 BMC 固件，然后退出会话。只读，不触发收集。
+// req.Brand、Store、Progress 不使用。
+func Identify(ctx context.Context, req Request) (*Identity, error) {
+	c, err := redfish.New(req.Address, redfish.Options{HTTPClient: req.HTTPClient, UserAgent: req.UserAgent, Sleep: req.Sleep})
+	if err != nil {
+		return nil, err
+	}
+	root, err := c.ServiceRoot(ctx)
+	var httpErr *redfish.HTTPError
+	if err != nil && !errors.As(err, &httpErr) {
+		return nil, fmt.Errorf("读取服务根：%w", err)
+	}
+	if err := c.Login(ctx, req.User, req.Password); err != nil {
+		return nil, fmt.Errorf("登录：%w", err)
+	}
+	defer c.Logout(ctx)
+	system, manager, err := identify(ctx, c, root)
+	if err != nil {
+		return nil, err
+	}
+	id := &Identity{
+		Manufacturer: strings.TrimSpace(system.Manufacturer),
+		Model:        strings.TrimSpace(system.Model),
+		Serial:       strings.TrimSpace(system.SerialNumber),
+		Hostname:     strings.TrimSpace(system.HostName),
+		Firmware:     strings.TrimSpace(manager.FirmwareVersion),
+	}
+	if b, ok := Detect(root, system, manager); ok {
+		id.Brand = b
+	}
+	return id, nil
+}
+
 // identify 读第一个系统和第一个管理器。系统读不到时只用管理器的信息。
 func identify(ctx context.Context, c *redfish.Client, root *redfish.ServiceRoot) (*redfish.Resource, *redfish.Resource, error) {
 	systems, managers := "/redfish/v1/Systems", "/redfish/v1/Managers"

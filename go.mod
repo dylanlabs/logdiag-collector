@@ -2,7 +2,11 @@ module github.com/dylanlabs/logdiag-collector
 
 go 1.27.3
 
-require golang.org/x/term v0.47.0
+require (
+	golang.org/x/sys v0.49.0
+	golang.org/x/term v0.47.0
+	golang.org/x/text v0.43.0
+)
 
 require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
@@ -13,7 +17,6 @@ require (
 	github.com/urfave/cli/v2 v2.25.7 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	golang.org/x/image v0.47.0 // indirect
-	golang.org/x/sys v0.49.0 // indirect
 )
 
 tool github.com/tc-hib/go-winres

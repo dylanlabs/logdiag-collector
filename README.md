@@ -2,7 +2,7 @@
 
 面向数据中心运维和服务工程师的免费开源工具：管理设备的管理口信息，一键收集服务器 BMC、存储、网络设备的日志包，再交给 [LogDiag](https://logdiag.com) 分析。
 
-> **状态：开发中，尚未发布可用版本。** 命令行已能对华为、超聚变、浪潮服务器一键收集日志包（等待真机验证），界面还在开发。
+> **状态：开发中，尚未发布可用版本。** 已能对华为、超聚变、浪潮服务器一键收集日志包（等待真机验证）。界面的设备列表、日志收集、收集结果、设置四页可用，健康与告警、OS 巡检只有页面布局。
 
 ## 计划支持的设备
 
@@ -50,6 +50,23 @@ gh attestation verify LogDiagCollector.exe --repo dylanlabs/logdiag-collector
 - 部分企业电脑用应用控制策略（AppLocker、WDAC）只允许运行已签名的程序，未签名版本在这些电脑上无法运行，请联系 IT 部门放行或等待签名版本。
 - 本程序不加壳，文件属性里有完整的产品名、版本和发布者。如果杀毒软件误报，请到 [Microsoft 文件提交页](https://www.microsoft.com/wdsi/filesubmission) 提交误报，也欢迎在 Issues 里告诉我们。
 
+## 界面
+
+双击 exe 打开界面，左侧导航和观感与 BMCKit 一致。
+
+| 页面 | 功能 |
+| --- | --- |
+| 设备列表 | 添加、批量添加（支持地址范围和网段）、编辑、删除设备；从 Excel/CSV 设备表或 BMCKit 导出的发现结果导入，导出为 Excel/CSV（不含密码）；凭据模板；检查连通（不登录）；识别型号（登录读取品牌、型号、序列号并回填） |
+| 日志收集 | 勾选设备批量收集，显示每台设备的阶段、进度、失败原因和处理办法；可以取消、重试、导出诊断记录 |
+| 收集结果 | 列出保存位置里的日志包，按客户打成离线上传包（zip，包里的 `package.json` 格式见 [docs/schema/package-1.schema.json](docs/schema/package-1.schema.json)，网站侧尚未接入） |
+| 设置 | 保存位置、同时收集的台数、单台超时、诊断记录、OS 巡检模块开关 |
+| 健康与告警 | 计划 1.1 提供，目前只有页面布局 |
+| OS 巡检 | 计划 1.0 提供（Windows 巡检 1.1），目前只有页面布局，可在设置里隐藏 |
+
+设备列表和设置保存在 `%APPDATA%\LogDiag Collector\`（`devices.json`、`settings.json`），日志包默认保存在 `文档\LogDiag Collector\`，可在设置里修改。用 `LogDiagCollector.exe ui --data <文件夹>` 可以换一个数据文件夹。密码只能在加密时的电脑和 Windows 账号上解开，换电脑时请导出设备表再导入，并重新填写密码。
+
+界面上的收集遵守和命令行相同的规则：同一台设备同时只跑一个任务；认证失败立即停止，账号密码没改之前不会再登录这台设备；取消只停止本机等待，设备端的生成任务不受影响，登录会话照常退出。
+
 ## 命令行
 
 ```
@@ -89,12 +106,12 @@ LogDiagCollector.exe help                  查看全部命令
 
 - **不收集遥测**，不上报任何使用数据。
 - **默认不联网。** 只有你点击“检查更新”“上传到 LogDiag”“问题反馈”“开始分析日志”时才会访问 logdiag.com。和设备之间的通信直连管理网，不经过系统代理。
-- **凭据只留在本机。** 设备账号密码加密保存在本机（规划中：默认用 Windows DPAPI 绑定当前 Windows 用户），永远不会上传。
+- **凭据只留在本机。** 设备和凭据模板的密码用 Windows DPAPI 加密保存（绑定当前 Windows 用户，换电脑或换账号都解不开），界面上不回显，导出的表格不含密码，永远不会上传。
 - **日志由你决定是否上传。** 收集到的日志可能含设备配置、序列号、主机名、IP 等信息；上传前会列出文件清单由你确认。
-- **诊断记录自动脱敏**，去掉的内容和保留的内容见上面的 `probe` 说明。
+- **诊断记录自动脱敏**，去掉的内容和保留的内容见上面的 `probe` 说明。界面导出的诊断记录文件名也不带设备 IP。
 - **本机界面只有你能访问**：只监听 127.0.0.1，并用一次性令牌打开，局域网里的其他电脑访问不到。
 
-当前开发版还没有任何联网功能。以上承诺适用于以后的所有版本。
+当前开发版自身不联网，“开始分析日志”“打开发布页”等按钮只是在浏览器里打开网页。以上承诺适用于以后的所有版本。
 
 ## 代码签名政策（Code signing policy）
 
@@ -139,10 +156,16 @@ internal/collect/huawei/ 华为、超聚变 iBMC 驱动
 internal/collect/inspur/ 浪潮 M5/M6/M7 驱动
 internal/redfish/        Redfish 会话、请求、任务轮询、文件下载
 internal/httprec/        HTTP 录制与回放（诊断记录和回放测试共用）
-internal/ui/             本机界面服务
+internal/ui/             本机界面服务和接口
+internal/inventory/      设备库、凭据模板、表格导入导出
+internal/tasks/          界面背后的任务：批量收集、检查连通、识别型号
+internal/results/        收集结果列表和离线上传包
+internal/appdata/        数据文件夹和设置
+internal/secret/         密码加密（Windows DPAPI）
+internal/xlsx/           读写 Excel .xlsx（只用标准库）
 internal/buildinfo/      版本信息
-web/                     界面静态文件，编译时嵌入 exe
-docs/schema/             manifest 的 JSON Schema（与 LogDiag 网站共用）
+web/                     界面静态文件（原生 ES Module + CSS），编译时嵌入 exe
+docs/schema/             manifest 和离线上传包的 JSON Schema（与 LogDiag 网站共用）
 scripts/build.sh         编译 Windows exe
 ```
 

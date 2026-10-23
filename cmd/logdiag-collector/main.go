@@ -17,7 +17,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dylanlabs/logdiag-collector/internal/appdata"
 	"github.com/dylanlabs/logdiag-collector/internal/buildinfo"
+	"github.com/dylanlabs/logdiag-collector/internal/inventory"
+	"github.com/dylanlabs/logdiag-collector/internal/secret"
+	"github.com/dylanlabs/logdiag-collector/internal/tasks"
 	"github.com/dylanlabs/logdiag-collector/internal/ui"
 )
 
@@ -94,6 +98,7 @@ func runUI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	addr := fs.String("addr", "127.0.0.1:0", "监听地址，只允许本机回环地址；端口 0 表示随机")
 	noOpen := fs.Bool("no-open", false, "不自动打开窗口，只打印地址")
 	idle := fs.Duration("idle-exit", 30*time.Second, "所有界面窗口关闭后多久退出，0 表示不自动退出")
+	dataDir := fs.String("data", "", "数据文件夹（设备库和设置），默认 %APPDATA%\\LogDiag Collector")
 	verbose := fs.Bool("v", false, "输出调试日志")
 	if done, code := parseFlags(fs, args, stderr); done {
 		return code
@@ -104,7 +109,24 @@ func runUI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		level = slog.LevelDebug
 	}
 	logger := slog.New(slog.NewTextHandler(stderr, &slog.HandlerOptions{Level: level}))
-	srv, err := ui.New(ui.Options{Addr: *addr, IdleExit: *idle, Logger: logger})
+	app, err := openApp(*dataDir)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	defer app.Devices.Close()
+	for _, w := range app.Warnings {
+		logger.Warn(w)
+	}
+	hub := ui.NewHub()
+	app.Tasks = tasks.New(tasks.Options{
+		Devices:  app.Devices,
+		Settings: app.Settings.Get,
+		Publish:  hub.Publish,
+		Logger:   logger,
+	})
+	defer app.Tasks.Shutdown(20 * time.Second) // 退出前删除还开着的设备会话
+	srv, err := ui.New(ui.Options{Addr: *addr, IdleExit: *idle, Logger: logger, Hub: hub, App: app, Busy: app.Tasks.Busy})
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
@@ -127,4 +149,38 @@ func runUI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	return 0
+}
+
+// openApp 打开数据文件夹里的设置和设备库。
+func openApp(dir string) (*ui.App, error) {
+	if dir == "" {
+		var err error
+		if dir, err = appdata.DefaultDir(); err != nil {
+			return nil, err
+		}
+	}
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return nil, fmt.Errorf("无法创建数据文件夹 %s：%w", dir, err)
+	}
+	box, err := secret.New(dir)
+	if err != nil {
+		return nil, err
+	}
+	settings, warn, err := appdata.OpenSettings(dir)
+	if err != nil {
+		return nil, err
+	}
+	app := &ui.App{Settings: settings, DataDir: dir, SecretMethod: box.Method()}
+	if warn != "" {
+		app.Warnings = append(app.Warnings, warn)
+	}
+	devices, warn, err := inventory.Open(dir, box)
+	if err != nil {
+		return nil, err
+	}
+	if warn != "" {
+		app.Warnings = append(app.Warnings, warn)
+	}
+	app.Devices = devices
+	return app, nil
 }

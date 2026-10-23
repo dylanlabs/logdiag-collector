@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/dylanlabs/logdiag-collector/blob/main/docs/schema/package-1.schema.json",
+  "title": "LogDiag 离线上传包第 1 版（草案）",
+  "description": "离线上传包（zip）根目录下的 package.json。包里每个设备一个文件夹，文件夹里是日志文件和 manifest.json（见 manifest-1.schema.json）。一个包只含一个客户的结果。网站侧尚未接入，字段可能在网站对接时调整；小版本只加字段、不改含义。",
+  "type": "object",
+  "required": ["schema", "package_id", "created_at", "tool", "customer", "batch_ids", "devices"],
+  "properties": {
+    "schema": { "const": "logdiag.package/1" },
+    "package_id": { "type": "string", "format": "uuid", "description": "每个包唯一，网站可据此去重" },
+    "created_at": { "type": "string", "format": "date-time", "description": "打包时间，带时区" },
+    "tool": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "customer": { "type": "string", "description": "包里所有设备共同的客户名称，可以为空" },
+    "batch_ids": {
+      "type": ["array", "null"],
+      "items": { "type": "string", "format": "uuid" },
+      "description": "包里结果来自哪些批次（manifest 的 batch_id）"
+    },
+    "devices": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["dir", "log_type", "files"],
+        "properties": {
+          "dir": { "type": "string", "description": "包里的设备文件夹名（只有一层）" },
+          "log_type": { "type": "string", "description": "同 manifest 的 log.type", "examples": ["huawei.ibmc.dump", "inspur.bmc.onekeylog"] },
+          "files": {
+            "type": "array",
+            "minItems": 2,
+            "description": "文件夹里的全部文件，含 manifest.json；SHA-256 在打包时重新计算并与 manifest 核对过",
+            "items": {
+              "type": "object",
+              "required": ["name", "size", "sha256", "role"],
+              "properties": {
+                "name": { "type": "string", "description": "相对设备文件夹的文件名" },
+                "size": { "type": "integer", "minimum": 0 },
+                "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+                "role": { "enum": ["main", "extra", "manifest"] }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
