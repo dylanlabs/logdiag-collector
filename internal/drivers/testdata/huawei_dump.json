@@ -1,0 +1,352 @@
+{
+  "format": "logdiag.httprec/1",
+  "note": "合成：依据华为《iBMC Redfish 接口说明》和华为 Huawei-iBMC-Cmdlets 1.1.0（Export-iBMCMaintenanceInfo、Invoke-iBMCFileDownload）：Manager.Dump 返回任务，任务消息为单个对象、进度在 Oem.Huawei.TaskPercentage（与华为 python-ibmcclient 的处理一致），Manager.GeneralDownload 的响应体就是文件。服务根不带 Vendor，按系统的制造商识别。未经真机核对。",
+  "interactions": [
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/",
+            "RedfishVersion": "1.0.2",
+            "UUID": "00000000-0000-4000-8000-000000000001",
+            "Systems": {
+              "@odata.id": "/redfish/v1/Systems"
+            },
+            "Managers": {
+              "@odata.id": "/redfish/v1/Managers"
+            },
+            "Chassis": {
+              "@odata.id": "/redfish/v1/Chassis"
+            },
+            "SessionService": {
+              "@odata.id": "/redfish/v1/SessionService"
+            },
+            "Links": {
+              "Sessions": {
+                "@odata.id": "/redfish/v1/SessionService/Sessions"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/redfish/v1/SessionService/Sessions",
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "UserName": "admin",
+            "Password": "REDACTED"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-Auth-Token": [
+            "REDACTED"
+          ],
+          "Location": [
+            "/redfish/v1/SessionService/Sessions/a1b2c3"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/SessionService/Sessions/a1b2c3",
+            "Id": "a1b2c3",
+            "UserName": "admin"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "Members": [
+              {
+                "@odata.id": "/redfish/v1/Managers/1"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers/1"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers/1",
+            "Id": "1",
+            "Name": "Manager",
+            "ManagerType": "BMC",
+            "FirmwareVersion": "3.08",
+            "Model": "iBMC",
+            "Actions": {
+              "#Manager.Reset": {
+                "target": "/redfish/v1/Managers/1/Actions/Manager.Reset"
+              },
+              "Oem": {
+                "Huawei": {
+                  "#Manager.Dump": {
+                    "target": "/redfish/v1/Managers/1/Actions/Oem/Huawei/Manager.Dump",
+                    "Type@Redfish.AllowableValues": [
+                      "URI"
+                    ]
+                  },
+                  "#Manager.GeneralDownload": {
+                    "target": "/redfish/v1/Managers/1/Actions/Oem/Huawei/Manager.GeneralDownload",
+                    "TransferProtocol@Redfish.AllowableValues": [
+                      "HTTPS",
+                      "SCP",
+                      "SFTP",
+                      "CIFS",
+                      "NFS"
+                    ]
+                  }
+                }
+              }
+            },
+            "Oem": {
+              "Huawei": {}
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "Members": [
+              {
+                "@odata.id": "/redfish/v1/Systems/1"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems/1"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems/1",
+            "Id": "1",
+            "Manufacturer": "Huawei",
+            "Model": "2288H V5",
+            "SerialNumber": "2102311SYNTH0001",
+            "HostName": "db01",
+            "PowerState": "On"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/redfish/v1/Managers/1/Actions/Oem/Huawei/Manager.Dump",
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "Type": "URI",
+            "Content": "/tmp/web/dump_info.tar.gz"
+          }
+        }
+      },
+      "response": {
+        "status": 202,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/TaskService/Tasks/1",
+            "@odata.type": "#Task.v1_0_2.Task",
+            "Id": "1",
+            "Name": "Export Dump File Task",
+            "TaskState": "Running",
+            "StartTime": "2026-10-26T10:00:00+08:00",
+            "Messages": [],
+            "Oem": {
+              "Huawei": {
+                "TaskPercentage": null
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/TaskService/Tasks/1"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/TaskService/Tasks/1",
+            "@odata.type": "#Task.v1_0_2.Task",
+            "Id": "1",
+            "Name": "Export Dump File Task",
+            "TaskState": "Running",
+            "StartTime": "2026-10-26T10:00:00+08:00",
+            "Messages": [],
+            "Oem": {
+              "Huawei": {
+                "TaskPercentage": "40%"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/TaskService/Tasks/1"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/TaskService/Tasks/1",
+            "@odata.type": "#Task.v1_0_2.Task",
+            "Id": "1",
+            "Name": "Export Dump File Task",
+            "TaskState": "Completed",
+            "StartTime": "2026-10-26T10:00:00+08:00",
+            "Messages": {
+              "@odata.type": "#MessageRegistry.v1_0_0.MessageRegistry",
+              "MessageId": "Base.1.0.Success",
+              "Message": "Successfully Completed Request",
+              "Severity": "OK",
+              "MessageArgs": []
+            },
+            "Oem": {
+              "Huawei": {
+                "TaskPercentage": "100%"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/redfish/v1/Managers/1/Actions/Oem/Huawei/Manager.GeneralDownload",
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "TransferProtocol": "HTTPS",
+            "Path": "/tmp/web/dump_info.tar.gz"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/octet-stream"
+          ],
+          "Content-Length": [
+            "172"
+          ]
+        },
+        "body": {
+          "base64": "H4sIAAAAAAAC/+3SsQ6CMBSF4c4+RZ9ACgLu6mpM1J0QqbGJQtMWIm9vYXR0MCb+33Jyz3SG2/QPW5n22iXH8+G0i1cyaOdN185lbW3l9GCmYhmeQXxCRWWezxm9p1J5IdIiK8siS8upT9eZWgmpxBf0PtQuThH/yY9tuOlgLtJs9lvZxAeQ185Jp+29HmXQPviFAAAAAAAAAAAAAAAAAAD8mhccf7pFACgAAA=="
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "path": "/redfish/v1/SessionService/Sessions/a1b2c3"
+      },
+      "response": {
+        "status": 200
+      }
+    }
+  ]
+}

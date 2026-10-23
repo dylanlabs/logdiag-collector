@@ -2,7 +2,7 @@
 
 面向数据中心运维和服务工程师的免费开源工具：管理设备的管理口信息，一键收集服务器 BMC、存储、网络设备的日志包，再交给 [LogDiag](https://logdiag.com) 分析。
 
-> **状态：开发中。** 目前是工程骨架和 Redfish 基础模块，还不能收集日志，尚未发布可用版本。
+> **状态：开发中，尚未发布可用版本。** 命令行已能对华为、超聚变、浪潮服务器一键收集日志包（等待真机验证），界面还在开发。
 
 ## 计划支持的设备
 
@@ -39,7 +39,7 @@
 Get-FileHash .\LogDiagCollector.exe -Algorithm SHA256
 ```
 
-仓库公开后，Release 还会附 GitHub 构建证明，证明 exe 是由本仓库的源码在 GitHub Actions 上自动编译的。装有 [GitHub CLI](https://cli.github.com) 时可以这样核对：
+Release 还附有 GitHub 构建证明，证明 exe 是由本仓库的公开源码在 GitHub Actions 上自动编译的。装有 [GitHub CLI](https://cli.github.com) 时可以这样核对：
 
 ```
 gh attestation verify LogDiagCollector.exe --repo dylanlabs/logdiag-collector
@@ -55,13 +55,35 @@ gh attestation verify LogDiagCollector.exe --repo dylanlabs/logdiag-collector
 ```
 LogDiagCollector.exe                       启动界面
 LogDiagCollector.exe probe --host 10.0.0.10 --user admin --record probe.json
+LogDiagCollector.exe collect --host 10.0.0.10 --user admin --record collect.json
 LogDiagCollector.exe version               显示版本
 LogDiagCollector.exe help                  查看全部命令
 ```
 
+密码会提示输入（不回显），也可以事先放在环境变量 `LOGDIAG_PASSWORD` 里。
+
 `probe` 只读探测一台设备的 Redfish 接口：显示 Redfish 版本、型号、序列号、固件版本，以及设备支持的日志动作。它只调用读取类接口，不触发收集、不修改设备。不填 `--user` 时只匿名读取服务根，不登录、不产生审计日志。
 
-加 `--record` 会把这次的接口往返保存成诊断记录。记录里已自动去掉密码、会话令牌、Cookie 和设备 IP，但仍保留型号、序列号、主机名等设备信息，发给别人前请先看一遍。
+`collect` 让设备生成一键日志包并下载，目前支持：
+
+| 品牌 | 日志包 | 方式 |
+| --- | --- | --- |
+| 华为、超聚变 iBMC | 一键收集包 `dump_info.tar.gz` | Redfish OEM 动作 Manager.Dump + Manager.GeneralDownload |
+| 浪潮 M5 / M6 / M7 | 一键日志（M5 为 `.tar`，M6/M7 为 `.tar.gz`） | BMC 网页接口 |
+
+品牌自动识别，也可以用 `--brand huawei|xfusion|inspur` 指定。生成要 3 到 10 分钟，期间显示进度；按 Ctrl+C 取消时会退出会话，设备端的生成任务不受影响。工具不清除日志、不重启设备，认证失败立即停止、不重试。
+
+文件保存在 `--out` 指定的位置（默认当前文件夹），一台设备一个文件夹，旁边的 `manifest.json` 写明设备、日志类型和 SHA-256，LogDiag 据此自动识别（格式见 [docs/schema/manifest-1.schema.json](docs/schema/manifest-1.schema.json)）：
+
+```
+[客户]\20261026\Huawei_2288HV5_2102311XXXXX_dump_20261026-1403\
+    manifest.json
+    dump_info.tar.gz
+```
+
+已知限制：浪潮部分新固件要求网页登录时对账号密码加密，目前还不支持，这类设备会显示“认证失败”。
+
+`probe` 和 `collect` 加 `--record` 会把这次的接口往返保存成诊断记录（日志包本身只留开头一小段和 SHA-256）。记录里已自动去掉密码、会话令牌、Cookie 和设备 IP，但仍保留型号、序列号、主机名和其他地址等设备信息，发给别人前请先看一遍。
 
 ## 隐私说明
 
@@ -74,9 +96,9 @@ LogDiagCollector.exe help                  查看全部命令
 
 当前开发版还没有任何联网功能。以上承诺适用于以后的所有版本。
 
-## 代码签名政策
+## 代码签名政策（Code signing policy）
 
-> **待补充。** v0.x 暂未签名。计划在首个公开版本发布后申请 [SignPath Foundation](https://signpath.org) 为开源项目提供的免费代码签名，获批后在这里公布完整政策。
+> **待补充。** v0.x 暂未签名。计划在首个正式发布的版本（v0.1）之后申请 [SignPath Foundation](https://signpath.org) 为开源项目提供的免费代码签名，获批后在这里公布完整政策。SignPath 要求项目已经以要签名的形式发布过，并会审核项目的信誉，所以不能在发布前申请。
 
 计划中的政策要点：
 
@@ -103,19 +125,24 @@ scripts/build.sh v0.1.0            # 编译带版本资源的 Windows exe 到 di
 各品牌接口靠两层测试保证：
 
 - **回放测试**：`internal/redfish/testdata/` 里是录制下来的接口往返，测试时代替真实设备，每次提交自动运行。每份记录的 `note` 字段写明它是真机录制还是按文档合成的。
-- **真机验证**：只能在能访问管理网的电脑上进行。用 `probe --record`（以及以后的收集命令）录下真机的响应，检查后放进 `testdata/`，再写对应的回放测试。
+- **真机验证**：只能在能访问管理网的电脑上进行。用 `probe --record` 和 `collect --record` 录下真机的响应，检查后放进对应的 `testdata/`（整机收集流程在 `internal/drivers/testdata/`），再写回放测试。
 
 自动回放通过不等于真机验收；已在真机上验证的品牌、型号和固件会写在发布说明里。
 
 ## 目录结构
 
 ```
-cmd/logdiag-collector/   程序入口和子命令（ui、probe、version）
+cmd/logdiag-collector/   程序入口和子命令（ui、probe、collect、version）
+internal/drivers/        识别设备、选择驱动、执行一次收集
+internal/collect/        驱动公共部分：阶段进度、文件落盘与校验、manifest
+internal/collect/huawei/ 华为、超聚变 iBMC 驱动
+internal/collect/inspur/ 浪潮 M5/M6/M7 驱动
 internal/redfish/        Redfish 会话、请求、任务轮询、文件下载
 internal/httprec/        HTTP 录制与回放（诊断记录和回放测试共用）
 internal/ui/             本机界面服务
 internal/buildinfo/      版本信息
 web/                     界面静态文件，编译时嵌入 exe
+docs/schema/             manifest 的 JSON Schema（与 LogDiag 网站共用）
 scripts/build.sh         编译 Windows exe
 ```
 

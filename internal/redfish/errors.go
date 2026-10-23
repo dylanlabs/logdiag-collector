@@ -16,6 +16,9 @@ import (
 // ErrTimeout 表示等待设备超过了设定的时间。
 var ErrTimeout = errors.New("等待设备超时")
 
+// ErrUnsupported 表示设备没有驱动需要的接口，驱动用 %w 包装它。
+var ErrUnsupported = errors.New("设备不支持此操作")
+
 // Kind 是面向用户的失败分类，每类都对应一条“该怎么做”。
 type Kind int
 
@@ -65,6 +68,8 @@ func KindOf(err error) Kind {
 		return KindTimeout
 	case errors.Is(err, context.Canceled):
 		return KindCanceled
+	case errors.Is(err, ErrUnsupported):
+		return KindUnsupported
 	case errors.As(err, &taskErr):
 		return KindTaskFailed
 	case errors.As(err, &httpErr):

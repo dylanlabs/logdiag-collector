@@ -3,6 +3,7 @@
 package redfish
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -43,10 +44,51 @@ func (s TaskState) Terminal() bool {
 
 // Message 是 Redfish 消息。
 type Message struct {
-	MessageID string   `json:"MessageId"`
-	Message   string   `json:"Message"`
-	Severity  string   `json:"Severity,omitempty"`
-	Args      []string `json:"MessageArgs,omitempty"`
+	MessageID string      `json:"MessageId"`
+	Message   string      `json:"Message"`
+	Severity  string      `json:"Severity,omitempty"`
+	Args      MessageArgs `json:"MessageArgs,omitempty"`
+}
+
+// MessageArgs 是消息参数。有的设备在参数里放数字，统一转成字符串。
+type MessageArgs []string
+
+func (a *MessageArgs) UnmarshalJSON(data []byte) error {
+	var raw []json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	out := make(MessageArgs, 0, len(raw))
+	for _, r := range raw {
+		var s string
+		if json.Unmarshal(r, &s) != nil {
+			s = string(r)
+		}
+		out = append(out, s)
+	}
+	*a = out
+	return nil
+}
+
+// Messages 是任务消息列表。华为 iBMC 有消息时返回单个对象而不是数组，这里都接受。
+type Messages []Message
+
+func (m *Messages) UnmarshalJSON(data []byte) error {
+	data = bytes.TrimSpace(data)
+	if len(data) > 0 && data[0] == '{' {
+		var one Message
+		if err := json.Unmarshal(data, &one); err != nil {
+			return err
+		}
+		*m = Messages{one}
+		return nil
+	}
+	var list []Message
+	if err := json.Unmarshal(data, &list); err != nil {
+		return err
+	}
+	*m = list
+	return nil
 }
 
 // Task 是任务资源（DMTF Task，或 Dell 的 Job）。
@@ -58,7 +100,9 @@ type Task struct {
 	TaskStatus      string
 	PercentComplete *int
 	TaskMonitor     string
-	Messages        []Message
+	Messages        Messages
+	// Oem 里可能有厂商自己的进度，例如华为的 Oem.Huawei.TaskPercentage（"50%"）。
+	Oem map[string]json.RawMessage
 
 	// Dell iDRAC 的 Job 资源用 JobState / Message 表示状态。
 	JobState string
@@ -83,10 +127,32 @@ func (t *Task) State() TaskState {
 
 // Percent 返回完成百分比，不知道时为 -1。
 func (t *Task) Percent() int {
-	if t.PercentComplete == nil {
-		return -1
+	if t.PercentComplete != nil {
+		return *t.PercentComplete
 	}
-	return *t.PercentComplete
+	for _, raw := range t.Oem {
+		var v struct{ TaskPercentage json.RawMessage }
+		if json.Unmarshal(raw, &v) != nil || len(v.TaskPercentage) == 0 {
+			continue
+		}
+		if p, ok := parsePercent(v.TaskPercentage); ok {
+			return p
+		}
+	}
+	return -1
+}
+
+// parsePercent 解析 50、"50"、"50%" 这几种写法。
+func parsePercent(raw json.RawMessage) (int, bool) {
+	var s string
+	if json.Unmarshal(raw, &s) != nil {
+		s = string(raw)
+	}
+	n, err := strconv.Atoi(strings.TrimSuffix(strings.TrimSpace(s), "%"))
+	if err != nil || n < 0 || n > 100 {
+		return 0, false
+	}
+	return n, true
 }
 
 // Text 返回最后一条设备消息。

@@ -8,3 +8,4 @@
 
 # 本地录制的诊断记录：检查脱敏后再放进 testdata/
 /records/
+/logdiag-collector
