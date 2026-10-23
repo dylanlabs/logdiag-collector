@@ -1,0 +1,113 @@
+{
+  "format": "logdiag.httprec/1",
+  "note": "合成：仿照 DMTF Redfish Mockup（public-rackmount1）的资源结构编写，不是真机录制。",
+  "interactions": [
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/" },
+      "response": {
+        "status": 200,
+        "header": { "Content-Type": ["application/json"] },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/",
+            "RedfishVersion": "1.17.0",
+            "UUID": "92384634-2938-2342-8820-489239905423",
+            "Vendor": "Contoso",
+            "Product": "Contoso BMC",
+            "Systems": { "@odata.id": "/redfish/v1/Systems" },
+            "Managers": { "@odata.id": "/redfish/v1/Managers" },
+            "Links": { "Sessions": { "@odata.id": "/redfish/v1/SessionService/Sessions" } },
+            "Oem": { "Contoso": { "@odata.type": "#ContosoServiceRoot.v1_0_0.ContosoServiceRoot" } }
+          }
+        }
+      }
+    },
+    {
+      "request": { "method": "POST", "path": "/redfish/v1/SessionService/Sessions", "body": { "json": { "UserName": "admin", "Password": "REDACTED" } } },
+      "response": {
+        "status": 201,
+        "header": { "Location": ["/redfish/v1/SessionService/Sessions/77"], "X-Auth-Token": ["REDACTED"] }
+      }
+    },
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/Systems" },
+      "response": { "status": 200, "body": { "json": { "Members": [{ "@odata.id": "/redfish/v1/Systems/437XR1138R2" }], "Members@odata.count": 1 } } }
+    },
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/Systems/437XR1138R2" },
+      "response": {
+        "status": 200,
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems/437XR1138R2",
+            "Id": "437XR1138R2",
+            "Manufacturer": "Contoso",
+            "Model": "3500",
+            "SerialNumber": "437XR1138R2",
+            "HostName": "web483",
+            "PowerState": "On",
+            "BiosVersion": "P79 v1.45 (12/06/2017)",
+            "LogServices": { "@odata.id": "/redfish/v1/Systems/437XR1138R2/LogServices" },
+            "Actions": {
+              "#ComputerSystem.Reset": { "target": "/redfish/v1/Systems/437XR1138R2/Actions/ComputerSystem.Reset" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/Systems/437XR1138R2/LogServices" },
+      "response": { "status": 200, "body": { "json": { "Members": [{ "@odata.id": "/redfish/v1/Systems/437XR1138R2/LogServices/DiagnosticLog" }] } } }
+    },
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/Systems/437XR1138R2/LogServices/DiagnosticLog" },
+      "response": {
+        "status": 200,
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems/437XR1138R2/LogServices/DiagnosticLog",
+            "Id": "DiagnosticLog",
+            "Actions": {
+              "#LogService.CollectDiagnosticData": {
+                "target": "/redfish/v1/Systems/437XR1138R2/LogServices/DiagnosticLog/Actions/LogService.CollectDiagnosticData",
+                "DiagnosticDataType@Redfish.AllowableValues": ["Manager", "OS"]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/Managers" },
+      "response": { "status": 200, "body": { "json": { "Members": [{ "@odata.id": "/redfish/v1/Managers/BMC" }] } } }
+    },
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/Managers/BMC" },
+      "response": {
+        "status": 200,
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers/BMC",
+            "Id": "BMC",
+            "ManagerType": "BMC",
+            "Model": "Joo Janta 200",
+            "FirmwareVersion": "4.4.6521",
+            "Actions": {
+              "#Manager.Reset": { "target": "/redfish/v1/Managers/BMC/Actions/Manager.Reset" },
+              "Oem": {
+                "Contoso": {
+                  "#Manager.Dump": { "target": "/redfish/v1/Managers/BMC/Actions/Oem/Contoso/Manager.Dump" }
+                }
+              }
+            },
+            "Oem": { "Contoso": {} }
+          }
+        }
+      }
+    },
+    {
+      "request": { "method": "DELETE", "path": "/redfish/v1/SessionService/Sessions/77" },
+      "response": { "status": 204 }
+    }
+  ]
+}

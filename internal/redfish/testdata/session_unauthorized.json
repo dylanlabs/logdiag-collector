@@ -1,0 +1,48 @@
+{
+  "format": "logdiag.httprec/1",
+  "note": "合成：密码错误时设备返回 401 和 Redfish 错误体，不是真机录制。",
+  "interactions": [
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/" },
+      "response": {
+        "status": 200,
+        "header": { "Content-Type": ["application/json"] },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/",
+            "RedfishVersion": "1.11.0",
+            "Links": { "Sessions": { "@odata.id": "/redfish/v1/SessionService/Sessions" } }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/redfish/v1/SessionService/Sessions",
+        "header": { "Content-Type": ["application/json"] },
+        "body": { "json": { "UserName": "admin", "Password": "REDACTED" } }
+      },
+      "response": {
+        "status": 401,
+        "header": { "Content-Type": ["application/json"] },
+        "body": {
+          "json": {
+            "error": {
+              "code": "Base.1.16.0.GeneralError",
+              "message": "A general error has occurred. See Resolution for information on how to resolve the error.",
+              "@Message.ExtendedInfo": [
+                {
+                  "MessageId": "Base.1.16.0.ResourceAtUriUnauthorized",
+                  "Message": "While accessing the resource at '/redfish/v1/SessionService/Sessions', the service received an authorization error 'Invalid username or password'.",
+                  "MessageArgs": ["/redfish/v1/SessionService/Sessions", "Invalid username or password"],
+                  "Severity": "Critical"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

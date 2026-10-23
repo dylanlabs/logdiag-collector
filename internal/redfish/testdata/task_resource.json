@@ -1,0 +1,68 @@
+{
+  "format": "logdiag.httprec/1",
+  "note": "合成：动作返回 202 和任务资源但没有 Location，之后轮询任务资源（一直是 200），文件路径在完成消息的 MessageArgs 里。华为 iBMC 的一键收集据文档是这种形态，参数未经真机核对。",
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/redfish/v1/Managers/1/Actions/Oem/Contoso/Manager.Dump",
+        "header": { "Content-Type": ["application/json"] },
+        "body": { "json": {} }
+      },
+      "response": {
+        "status": 202,
+        "header": { "Content-Type": ["application/json"] },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/TaskService/Tasks/1",
+            "Id": "1",
+            "Name": "Export Dump File Task",
+            "TaskState": "Running",
+            "StartTime": "2026-10-23T08:00:00+08:00",
+            "Messages": []
+          }
+        }
+      }
+    },
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/TaskService/Tasks/1" },
+      "response": {
+        "status": 200,
+        "header": { "Content-Type": ["application/json"] },
+        "body": { "json": { "@odata.id": "/redfish/v1/TaskService/Tasks/1", "Id": "1", "TaskState": "Running", "PercentComplete": 20, "Messages": [{ "MessageId": "Contoso.1.0.Collecting", "Message": "Collecting files." }] } }
+      }
+    },
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/TaskService/Tasks/1" },
+      "response": {
+        "status": 200,
+        "header": { "Content-Type": ["application/json"] },
+        "body": { "json": { "@odata.id": "/redfish/v1/TaskService/Tasks/1", "Id": "1", "TaskState": "Running", "PercentComplete": 80, "Messages": [{ "MessageId": "Contoso.1.0.Collecting", "Message": "Compressing files." }] } }
+      }
+    },
+    {
+      "request": { "method": "GET", "path": "/redfish/v1/TaskService/Tasks/1" },
+      "response": {
+        "status": 200,
+        "header": { "Content-Type": ["application/json"] },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/TaskService/Tasks/1",
+            "Id": "1",
+            "TaskState": "Completed",
+            "TaskStatus": "OK",
+            "PercentComplete": 100,
+            "Messages": [
+              {
+                "MessageId": "Contoso.1.0.DumpCompleted",
+                "Message": "The dump file /tmp/web/dump_info.tar.gz has been generated.",
+                "MessageArgs": ["/tmp/web/dump_info.tar.gz"],
+                "Severity": "OK"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
