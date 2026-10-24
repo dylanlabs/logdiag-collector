@@ -157,7 +157,8 @@ func TestReplayTaskJob(t *testing.T) {
 	if start.Monitor != "/redfish/v1/Managers/iDRAC.Embedded.1/Jobs/JID_612345678901" {
 		t.Fatalf("Monitor = %q", start.Monitor)
 	}
-	// Dell 驱动改为轮询 TaskService/Tasks/<JobID>，完成时的 Location 才指向文件。
+	// 老版 Dell 官方脚本的做法：轮询 TaskService/Tasks/<JobID>，完成时的 Location 指向文件。
+	// Dell 驱动先轮询 Location 给的 Job 地址，Job 完成却没给文件地址时再这样查。
 	jobID := filepath.Base(start.Monitor)
 	res, err := c.WaitTask(ctx, "/redfish/v1/TaskService/Tasks/"+jobID, PollOptions{})
 	if err != nil {

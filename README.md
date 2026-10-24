@@ -2,7 +2,7 @@
 
 面向数据中心运维和服务工程师的免费开源工具：管理设备的管理口信息，一键收集服务器 BMC、存储、网络设备的日志包，再交给 [LogDiag](https://logdiag.com) 分析。
 
-> **状态：开发中，尚未发布可用版本。** 已能对华为、超聚变、浪潮服务器一键收集日志包（等待真机验证）。界面的设备列表、日志收集、收集结果、设置四页可用，健康与告警、OS 巡检只有页面布局。
+> **状态：开发中，尚未发布可用版本。** 已能对华为、超聚变、浪潮、联想、Dell、HPE 服务器一键收集日志包（都还在等真机验证）。界面的设备列表、日志收集、收集结果、设置四页可用，健康与告警、OS 巡检只有页面布局。
 
 ## 计划支持的设备
 
@@ -59,7 +59,7 @@ gh attestation verify LogDiagCollector.exe --repo dylanlabs/logdiag-collector
 | 设备列表 | 添加、批量添加（支持地址范围和网段）、编辑、删除设备；从 Excel/CSV 设备表或 BMCKit 导出的发现结果导入，导出为 Excel/CSV（不含密码）；凭据模板；检查连通（不登录）；识别型号（登录读取品牌、型号、序列号并回填） |
 | 日志收集 | 勾选设备批量收集，显示每台设备的阶段、进度、失败原因和处理办法；可以取消、重试、导出诊断记录 |
 | 收集结果 | 列出保存位置里的日志包，按客户打成离线上传包（zip，包里的 `package.json` 格式见 [docs/schema/package-1.schema.json](docs/schema/package-1.schema.json)，网站侧尚未接入） |
-| 设置 | 保存位置、同时收集的台数、单台超时、诊断记录、OS 巡检模块开关 |
+| 设置 | 保存位置、同时收集的台数、单台超时、诊断记录、是否代为接受 Dell SupportAssist 许可协议、OS 巡检模块开关 |
 | 健康与告警 | 计划 1.1 提供，目前只有页面布局 |
 | OS 巡检 | 计划 1.0 提供（Windows 巡检 1.1），目前只有页面布局，可在设置里隐藏 |
 
@@ -79,7 +79,7 @@ LogDiagCollector.exe help                  查看全部命令
 
 密码会提示输入（不回显），也可以事先放在环境变量 `LOGDIAG_PASSWORD` 里。在 cmd、PowerShell 里运行 `probe`、`collect` 时会另开一个命令行窗口（输入密码、显示进度，结束后按回车关闭）；在脚本或 Git Bash 里运行、或者把输出重定向到文件时，输入输出走原来的窗口。
 
-`probe` 只读探测一台设备的 Redfish 接口：显示 Redfish 版本、型号、序列号、固件版本，以及设备支持的日志动作。它只调用读取类接口，不触发收集、不修改设备。不填 `--user` 时只匿名读取服务根，不登录、不产生审计日志。
+`probe` 只读探测一台设备的 Redfish 接口：显示 Redfish 版本、型号、序列号、固件版本、设备支持的日志动作，以及各厂商收集日志包的入口（Dell 的 DellLCService、HPE 的 AHS、联想的 ServiceData）。它只调用读取类接口，不触发收集、不修改设备。不填 `--user` 时只匿名读取服务根，不登录、不产生审计日志。
 
 `collect` 让设备生成一键日志包并下载，目前支持：
 
@@ -87,8 +87,13 @@ LogDiagCollector.exe help                  查看全部命令
 | --- | --- | --- |
 | 华为、超聚变 iBMC | 一键收集包 `dump_info.tar.gz` | Redfish OEM 动作 Manager.Dump + Manager.GeneralDownload |
 | 浪潮 M5 / M6 / M7 | 一键日志（M5 为 `.tar`，M6/M7 为 `.tar.gz`） | BMC 网页接口 |
+| 联想 XCC / XCC2 / XCC3 | FFDC 服务数据 `.tzz` | Redfish OEM 动作 LenovoServiceData.ExportFFDCData；没有时（XCC3）用标准动作 LogService.CollectDiagnosticData |
+| Dell iDRAC9 / iDRAC10 | SupportAssist 收集包（TSR）`sacollect.zip`，含硬件数据和存储控制器日志 | Redfish OEM 动作 DellLCService.SupportAssistCollection，导出到本地 |
+| HPE iLO 5 / iLO 6 | 最近 7 天的 AHS 日志 `.ahs`，另附 `IML.json`、`IEL.json` | iLO 的 AHS 下载地址；IML、IEL 读 Redfish 日志条目 |
 
-品牌自动识别，也可以用 `--brand huawei|xfusion|inspur` 指定。生成要 3 到 10 分钟，期间显示进度；按 Ctrl+C 取消时会退出会话，设备端的生成任务不受影响。工具不清除日志、不重启设备，认证失败立即停止、不重试。
+品牌自动识别，也可以用 `--brand huawei|xfusion|inspur|lenovo|dell|hpe` 指定。设备生成日志包要几分钟到十几分钟（HPE 的 AHS 不用生成，直接下载），期间显示进度；按 Ctrl+C 取消时会退出会话，设备端的生成任务不受影响。工具不清除日志、不重启设备，认证失败立即停止、不重试。
+
+Dell iDRAC 第一次导出 SupportAssist 收集包之前，要先接受 Dell 的 SupportAssist 许可协议（EULA）。工具默认不代为接受：遇到还没接受的 iDRAC 会停下来提示。在设置里勾选“代为接受 Dell SupportAssist 许可协议”，或者命令行加 `--accept-eula`，工具会先接受再收集，等同于在 iDRAC 网页上点“接受”。
 
 文件保存在 `--out` 指定的位置（默认当前文件夹），一台设备一个文件夹，旁边的 `manifest.json` 写明设备、日志类型和 SHA-256，LogDiag 据此自动识别（格式见 [docs/schema/manifest-1.schema.json](docs/schema/manifest-1.schema.json)）：
 
@@ -98,7 +103,14 @@ LogDiagCollector.exe help                  查看全部命令
     dump_info.tar.gz
 ```
 
-已知限制：浪潮部分新固件要求网页登录时对账号密码加密，目前还不支持，这类设备会显示“认证失败”。
+HPE 的文件夹里除了 `.ahs` 还有 `IML.json`、`IEL.json`（manifest 里标为附带文件），manifest 的 `log.range` 写明 AHS 覆盖的日期。Dell 的序列号用服务标签（Service Tag）。
+
+已知限制：
+
+- 浪潮部分新固件要求网页登录时对账号密码加密，目前还不支持，这类设备会显示“认证失败”。
+- Dell iDRAC7/8 只能把 SupportAssist 收集推送到网络共享，计划在 1.1 支持。
+- HPE iLO 4（Gen9）会按同样的接口尝试，没有专门适配。
+- 联想 AMD 平台的 SR635/SR655 用的不是 XCC，暂不支持；IBM/联想 System x 的 IMM2 计划在 v0.2 支持。
 
 `probe` 和 `collect` 加 `--record` 会把这次的接口往返保存成诊断记录（日志包本身只留开头一小段和 SHA-256）。记录里已自动去掉密码、会话令牌、Cookie 和设备 IP，但仍保留型号、序列号、主机名和其他地址等设备信息，发给别人前请先看一遍。
 
@@ -154,6 +166,9 @@ internal/drivers/        识别设备、选择驱动、执行一次收集
 internal/collect/        驱动公共部分：阶段进度、文件落盘与校验、manifest
 internal/collect/huawei/ 华为、超聚变 iBMC 驱动
 internal/collect/inspur/ 浪潮 M5/M6/M7 驱动
+internal/collect/lenovo/ 联想 XCC/XCC2/XCC3 驱动
+internal/collect/dell/   Dell iDRAC9/10 驱动
+internal/collect/hpe/    HPE iLO 5/6 驱动
 internal/redfish/        Redfish 会话、请求、任务轮询、文件下载
 internal/httprec/        HTTP 录制与回放（诊断记录和回放测试共用）
 internal/ui/             本机界面服务和接口

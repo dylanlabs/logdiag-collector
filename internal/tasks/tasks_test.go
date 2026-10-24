@@ -4,6 +4,7 @@ package tasks
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -206,10 +207,10 @@ func TestSkipUnsupported(t *testing.T) {
 	e := newEnv(t, Options{Collect: func(ctx context.Context, req drivers.Request) (*collect.Result, error) {
 		return fakeResult(req), nil
 	}})
-	dell := e.add(t, "10.0.0.1", "Dell")
+	h3c := e.add(t, "10.0.0.1", "H3C")
 	storage, _ := e.inv.Add(inventory.Patch{Type: ptr("storage"), MgmtIP: ptr("10.0.0.2"), User: ptr("admin"), Password: ptr("pw")})
-	_, started, skipped := e.m.StartCollect([]string{dell, storage.ID})
-	if len(started) != 0 || len(skipped) != 2 || !strings.Contains(skipped[0].Reason, "暂不支持Dell") || !strings.Contains(skipped[1].Reason, "只支持服务器") {
+	_, started, skipped := e.m.StartCollect([]string{h3c, storage.ID})
+	if len(started) != 0 || len(skipped) != 2 || !strings.Contains(skipped[0].Reason, "暂不支持H3C") || !strings.Contains(skipped[1].Reason, "只支持服务器") {
 		t.Fatalf("未支持的品牌和类型应跳过：started %d, skipped %+v", len(started), skipped)
 	}
 }
@@ -225,8 +226,33 @@ func TestInspurBrandHint(t *testing.T) {
 	if a+b != "inspur" {
 		t.Errorf("只有浪潮指定驱动，其他自动识别：%q %q", a, b)
 	}
-	if !Supported("XFusion") || Supported("Dell") || SupportedText() != "华为、超聚变、浪潮" {
+	if !Supported("XFusion") || Supported("H3C") || SupportedText() != "华为、超聚变、浪潮、联想、Dell、HPE" {
 		t.Error("品牌支持判断不对")
+	}
+	for _, v := range []string{"Dell Inc.", "戴尔", "Lenovo", "联想", "HPE", "HP", "惠普", "Hewlett Packard Enterprise"} {
+		if !Supported(v) {
+			t.Errorf("%s 应已支持", v)
+		}
+	}
+}
+
+// TestDriverHint 检查驱动给的专门建议（Dell 未接受许可协议）原样显示，并且“代为接受”跟随设置。
+func TestDriverHint(t *testing.T) {
+	for _, allow := range []bool{false, true} {
+		accept := make(chan bool, 1)
+		e := newEnv(t, Options{Collect: func(ctx context.Context, req drivers.Request) (*collect.Result, error) {
+			accept <- req.AcceptEULA
+			return nil, redfish.WithHint(errors.New("SRV085"), redfish.KindConsent, "先接受许可协议")
+		}})
+		e.set.AcceptEULA = allow
+		e.m.StartCollect([]string{e.add(t, "10.0.0.1", "Dell")})
+		if got := <-accept; got != allow {
+			t.Errorf("设置为 %v 时 AcceptEULA = %v", allow, got)
+		}
+		waitFor(t, "任务失败", func() bool { return e.states()["10.0.0.1"] == StateFailed })
+		if task := e.m.Tasks()[0]; task.Kind != "需要确认" || task.Hint != "先接受许可协议" {
+			t.Errorf("Kind = %q, Hint = %q", task.Kind, task.Hint)
+		}
 	}
 }
 
