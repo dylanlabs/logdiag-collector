@@ -166,6 +166,9 @@ internal/drivers/        识别设备、选择驱动、执行一次收集
 internal/collect/        驱动公共部分：阶段进度、文件落盘与校验、manifest
 internal/collect/huawei/ 华为、超聚变 iBMC 驱动
 internal/collect/inspur/ 浪潮 M5/M6/M7 驱动
+internal/collect/lenovo/ 联想 XCC/XCC2/XCC3 驱动
+internal/collect/dell/   Dell iDRAC9/10 驱动
+internal/collect/hpe/    HPE iLO 5/6 驱动
 internal/redfish/        Redfish 会话、请求、任务轮询、文件下载
 internal/httprec/        HTTP 录制与回放（诊断记录和回放测试共用）
 internal/ui/             本机界面服务和接口
