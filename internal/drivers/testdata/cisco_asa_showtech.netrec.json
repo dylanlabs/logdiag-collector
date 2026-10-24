@@ -1,0 +1,79 @@
+{
+  "format": "logdiag.netrec/1",
+  "note": "合成：netsim 模拟的 Cisco ASA 5516-X（ASA 9.12），不是真机。依据 Cisco ASA 命令参考（terminal pager 0、show version、show inventory、show tech-support）。账号登录后在普通模式，用 enable 密码进入特权模式。",
+  "tool": "netsim",
+  "recorded_at": "2026-10-24T10:00:00+08:00",
+  "server_version": "SSH-2.0-Cisco-1.25",
+  "host_key": "ssh-ed25519 SHA256:2NRYskDP6cQdxbau6RGmNC/XwKelKinM/EAmQ2WYIGQ",
+  "steps": [
+    {
+      "at_ms": 0,
+      "output": {
+        "text": "Type help or '?' for a list of available commands.\r\n\r\nASA-EDGE-01\u003e"
+      }
+    },
+    {
+      "send": "\n",
+      "at_ms": 30,
+      "output": {
+        "text": "\r\nASA-EDGE-01\u003e"
+      }
+    },
+    {
+      "send": "enable\n",
+      "at_ms": 61,
+      "output": {
+        "text": "enable\r\nPassword: "
+      }
+    },
+    {
+      "secret": true,
+      "at_ms": 91,
+      "output": {
+        "text": "\r\nASA-EDGE-01#"
+      }
+    },
+    {
+      "send": "terminal length 0\n",
+      "at_ms": 122,
+      "output": {
+        "text": "terminal length 0\r\n             ^\r\nERROR: % Invalid input detected at '^' marker.\r\nASA-EDGE-01#"
+      }
+    },
+    {
+      "send": "terminal pager 0\n",
+      "at_ms": 152,
+      "output": {
+        "text": "terminal pager 0\r\nASA-EDGE-01#"
+      }
+    },
+    {
+      "send": "show version\n",
+      "at_ms": 183,
+      "output": {
+        "text": "show version\r\n\r\nCisco Adaptive Security Appliance Software Version 9.12(4)37\r\nSSP Operating System Version 2.6(1.224)\r\nDevice Manager Version 7.12(2)\r\n\r\nCompiled on Wed 21-Oct-20 18:06 GMT by builders\r\nSystem image file is \"disk0:/asa9-12-4-37-lfbff-k8.SPA\"\r\nConfig file at boot was \"startup-config\"\r\n\r\nASA-EDGE-01 up 25 days 3 hours\r\n\r\nHardware:   ASA5516, 8192 MB RAM, CPU Atom C2000 series 2416 MHz, 1 CPU (8 cores)\r\nInternal ATA Compact Flash, 8192MB\r\nBIOS Flash M25P64 @ 0xfed01000, 16384KB\r\n\r\n 0: Ext: GigabitEthernet1/1  : address is 0011.2233.4410, irq 255\r\n 1: Ext: GigabitEthernet1/2  : address is 0011.2233.4411, irq 255\r\n\r\nLicensed features for this platform:\r\nMaximum Physical Interfaces       : Unlimited      perpetual\r\nMaximum VLANs                     : 150            perpetual\r\n\r\nSerial Number: JADSYNTH004\r\nRunning Permanent Activation Key: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000\r\nConfiguration register is 0x1\r\nConfiguration last modified by enable_15 at 10:00:00.000 CST Mon Oct 19 2026\r\nASA-EDGE-01#"
+      }
+    },
+    {
+      "send": "show inventory\n",
+      "at_ms": 214,
+      "output": {
+        "text": "show inventory\r\nName: \"Chassis\", DESCR: \"ASA 5516-X with FirePOWER services, 8GE, AC, DES\"\r\nPID: ASA5516           , VID: V05     , SN: JADSYNTH004\r\n\r\nName: \"Storage Device 1\", DESCR: \"ASA 5516-X SSD\"\r\nPID: N/A               , VID: N/A     , SN: MSASYNTH0SSD\r\nASA-EDGE-01#"
+      }
+    },
+    {
+      "send": "show logging\n",
+      "at_ms": 245,
+      "output": {
+        "text": "show logging\r\nSyslog logging: enabled\r\n    Facility: 20\r\n    Timestamp logging: enabled\r\n    Buffer logging: level informational, 3 messages logged\r\nOct 26 2026 13:55:01: %ASA-6-302013: Built inbound TCP connection 1001 for outside:203.0.113.10/51515 (203.0.113.10/51515) to inside:10.20.0.5/443 (10.20.0.5/443)\r\nOct 26 2026 13:57:12: %ASA-4-411002: Line protocol on Interface GigabitEthernet1/3, changed state to down\r\nOct 26 2026 13:58:40: %ASA-5-111008: User 'admin' executed the 'enable' command.\r\nASA-EDGE-01#"
+      }
+    },
+    {
+      "send": "show tech-support\n",
+      "at_ms": 276,
+      "output": {
+        "text": "show tech-support\r\n\r\n------------------ show clock ------------------\r\n\r\n*14:03:11.000 CST Mon Oct 26 2026\r\n\r\n------------------ show version ------------------\r\n\r\n\r\nCisco Adaptive Security Appliance Software Version 9.12(4)37\r\nSSP Operating System Version 2.6(1.224)\r\nDevice Manager Version 7.12(2)\r\n\r\nCompiled on Wed 21-Oct-20 18:06 GMT by builders\r\nSystem image file is \"disk0:/asa9-12-4-37-lfbff-k8.SPA\"\r\nConfig file at boot was \"startup-config\"\r\n\r\nASA-EDGE-01 up 25 days 3 hours\r\n\r\nHardware:   ASA5516, 8192 MB RAM, CPU Atom C2000 series 2416 MHz, 1 CPU (8 cores)\r\nInternal ATA Compact Flash, 8192MB\r\nBIOS Flash M25P64 @ 0xfed01000, 16384KB\r\n\r\n 0: Ext: GigabitEthernet1/1  : address is 0011.2233.4410, irq 255\r\n 1: Ext: GigabitEthernet1/2  : address is 0011.2233.4411, irq 255\r\n\r\nLicensed features for this platform:\r\nMaximum Physical Interfaces       : Unlimited      perpetual\r\nMaximum VLANs                     : 150            perpetual\r\n\r\nSerial Number: JADSYNTH004\r\nRunning Permanent Activation Key: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000\r\nConfiguration register is 0x1\r\nConfiguration last modified by enable_15 at 10:00:00.000 CST Mon Oct 19 2026\r\n\r\n------------------ show running-config ------------------\r\n\r\n\r\n: Saved\r\n:\r\nASA Version 9.12(4)37\r\n!\r\nhostname ASA-EDGE-01\r\nenable password ****** pbkdf2\r\npasswd ****** encrypted\r\nusername admin password ****** pbkdf2 privilege 15\r\nnames\r\n!\r\ninterface GigabitEthernet1/1\r\n nameif outside\r\n security-level 0\r\n ip address 203.0.113.2 255.255.255.0\r\n!\r\ncrypto ikev1 policy 10\r\ntunnel-group 198.51.100.7 ipsec-attributes\r\n ikev1 pre-shared-key ******\r\naaa-server TACACS protocol tacacs+\r\naaa-server TACACS (inside) host 10.20.0.60\r\n key ******\r\nsnmp-server host inside 10.20.0.50 community ****** version 2c\r\nsnmp-server community ******\r\n\r\n------------------ show inventory ------------------\r\n\r\nName: \"Chassis\", DESCR: \"ASA 5516-X with FirePOWER services, 8GE, AC, DES\"\r\nPID: ASA5516           , VID: V05     , SN: JADSYNTH004\r\n\r\nName: \"Storage Device 1\", DESCR: \"ASA 5516-X SSD\"\r\nPID: N/A               , VID: N/A     , SN: MSASYNTH0SSD\r\n\r\n------------------ show environment all ------------------\r\n\r\nFAN PS-1 is OK\r\nFAN 1 is OK\r\nFAN 2 is OK\r\nFAN 3 is FAULTY\r\nSYSTEM TEMPERATURE is OK\r\nSystem Temperature Value: 38 Degree Celsius\r\nPower Supply A: OK\r\n\r\n------------------ show interfaces ------------------\r\nCollecting data, please wait ... done\r\n\r\nGigabitEthernet1/0/1 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0001 (bia 0011.2233.0001)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     100000 packets input, 64000000 bytes, 0 no buffer\r\n     1 input errors, 1 CRC, 0 frame, 0 overrun, 0 ignored\r\n     90000 packets output, 58000000 bytes, 0 underruns\r\nGigabitEthernet1/0/2 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0002 (bia 0011.2233.0002)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     200000 packets input, 128000000 bytes, 0 no buffer\r\n     2 input errors, 2 CRC, 0 frame, 0 overrun, 0 ignored\r\n     180000 packets output, 116000000 bytes, 0 underruns\r\nGigabitEthernet1/0/3 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0003 (bia 0011.2233.0003)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     300000 packets input, 192000000 bytes, 0 no buffer\r\n     3 input errors, 3 CRC, 0 frame, 0 overrun, 0 ignored\r\n     270000 packets output, 174000000 bytes, 0 underruns\r\nGigabitEthernet1/0/4 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0004 (bia 0011.2233.0004)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     400000 packets input, 256000000 bytes, 0 no buffer\r\n     4 input errors, 4 CRC, 0 frame, 0 overrun, 0 ignored\r\n     360000 packets output, 232000000 bytes, 0 underruns\r\nGigabitEthernet1/0/5 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0005 (bia 0011.2233.0005)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     500000 packets input, 320000000 bytes, 0 no buffer\r\n     5 input errors, 0 CRC, 0 frame, 0 overrun, 0 ignored\r\n     450000 packets output, 290000000 bytes, 0 underruns\r\nGigabitEthernet1/0/6 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0006 (bia 0011.2233.0006)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     600000 packets input, 384000000 bytes, 0 no buffer\r\n     6 input errors, 1 CRC, 0 frame, 0 overrun, 0 ignored\r\n     540000 packets output, 348000000 bytes, 0 underruns\r\nGigabitEthernet1/0/7 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0007 (bia 0011.2233.0007)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     700000 packets input, 448000000 bytes, 0 no buffer\r\n     0 input errors, 2 CRC, 0 frame, 0 overrun, 0 ignored\r\n     630000 packets output, 406000000 bytes, 0 underruns\r\nGigabitEthernet1/0/8 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0008 (bia 0011.2233.0008)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     800000 packets input, 512000000 bytes, 0 no buffer\r\n     1 input errors, 3 CRC, 0 frame, 0 overrun, 0 ignored\r\n     720000 packets output, 464000000 bytes, 0 underruns\r\n\r\n------------------ show logging ------------------\r\n\r\nSyslog logging: enabled\r\n    Facility: 20\r\n    Timestamp logging: enabled\r\n    Buffer logging: level informational, 3 messages logged\r\nOct 26 2026 13:55:01: %ASA-6-302013: Built inbound TCP connection 1001 for outside:203.0.113.10/51515 (203.0.113.10/51515) to inside:10.20.0.5/443 (10.20.0.5/443)\r\nOct 26 2026 13:57:12: %ASA-4-411002: Line protocol on Interface GigabitEthernet1/3, changed state to down\r\nOct 26 2026 13:58:40: %ASA-5-111008: User 'admin' executed the 'enable' command.\r\n\r\n------------------ show history all ------------------\r\n\r\nASA-EDGE-01#\r\n  show version\r\n  show tech-support\r\nASA-EDGE-01#"
+      }
+    }
+  ]
+}

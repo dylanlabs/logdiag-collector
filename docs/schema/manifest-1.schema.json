@@ -23,7 +23,7 @@
       "required": ["type", "vendor", "model", "serial", "controller"],
       "properties": {
         "type": { "enum": ["server", "storage", "network", "os"] },
-        "vendor": { "type": "string", "examples": ["Huawei", "xFusion", "Inspur"] },
+        "vendor": { "type": "string", "examples": ["Huawei", "xFusion", "Inspur", "Cisco", "H3C"] },
         "model": { "type": "string" },
         "serial": { "type": "string" },
         "hostname": { "type": "string" },
@@ -31,8 +31,9 @@
         "controller": {
           "type": "object",
           "required": ["type", "firmware"],
+          "description": "服务器是 BMC 和它的固件版本；网络设备是操作系统和版本，例如 NX-OS 9.3(8)",
           "properties": {
-            "type": { "type": "string", "examples": ["iBMC", "BMC", "iDRAC", "XCC", "iLO"] },
+            "type": { "type": "string", "examples": ["iBMC", "BMC", "iDRAC", "XCC", "iLO", "IOS", "IOS-XE", "NX-OS", "ASA", "VRP", "Comware"] },
             "firmware": { "type": "string" }
           }
         }
@@ -46,7 +47,8 @@
           "type": "string",
           "pattern": "^[a-z0-9]+(\\.[a-z0-9]+)+$",
           "description": "厂商.产品线.日志，全小写，网站按它选解析器",
-          "examples": ["huawei.ibmc.dump", "xfusion.ibmc.dump", "inspur.bmc.onekeylog", "lenovo.xcc.ffdc", "dell.idrac.tsr", "hpe.ilo.ahs"]
+          "examples": ["huawei.ibmc.dump", "xfusion.ibmc.dump", "inspur.bmc.onekeylog", "lenovo.xcc.ffdc", "dell.idrac.tsr", "hpe.ilo.ahs",
+            "cisco.ios.showtech", "cisco.nxos.showtech", "cisco.mds.showtech", "cisco.asa.showtech", "huawei.vrp.diag", "h3c.comware.diag"]
         },
         "method": { "type": "string", "examples": ["redfish-oem", "redfish-standard", "bmc-web-api", "ssh"] },
         "range": {
@@ -72,9 +74,10 @@
     "redaction": {
       "type": "object",
       "required": ["applied"],
+      "description": "服务器日志包按设备原样保存（applied 为 false）；网络设备的命令输出在保存时遮盖了口令等内容，遮盖处写成 ******",
       "properties": {
         "applied": { "type": "boolean" },
-        "rules": { "type": "array", "items": { "type": "string" } }
+        "rules": { "type": "array", "items": { "type": "string" }, "examples": [["password", "auth-key", "snmp-community", "ciphertext"]] }
       }
     }
   }

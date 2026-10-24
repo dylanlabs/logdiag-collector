@@ -67,6 +67,7 @@ func TestConsoleNeed(t *testing.T) {
 		{"bogus", consoleOutput},
 		{"probe --host 10.0.0.1", consoleInteractive},
 		{"collect -h", consoleInteractive},
+		{"inspect --host 10.0.0.1", consoleInteractive},
 	} {
 		if got := consoleNeedOf(strings.Fields(c.args)); got != c.want {
 			t.Errorf("%q: %d，应为 %d", c.args, got, c.want)

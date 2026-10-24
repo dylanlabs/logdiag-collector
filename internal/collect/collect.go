@@ -52,6 +52,8 @@ type Device struct {
 	Serial     string
 	Hostname   string
 	Address    string // 管理口地址
+	HostIP     string // 系统地址（OS 巡检用），对应 manifest 的 device.host_ip
+	OS         string // 操作系统，例如 Rocky Linux 9.4，对应 manifest 的 device.os
 	Controller Controller
 }
 
@@ -103,6 +105,10 @@ type Job struct {
 	Progress func(Event)
 	// Sleep 是驱动等待设备时用的函数，回放测试用它跳过等待。为 nil 时真实等待。
 	Sleep func(context.Context, time.Duration) error
+
+	// Redaction 写进 manifest，说明保存时是否对内容脱敏。服务器日志包按设备原样保存，不脱敏；
+	// 网络设备的命令输出在写文件时遮盖了口令和团体名。
+	Redaction Redaction
 }
 
 // Report 报告进度。

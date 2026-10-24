@@ -19,6 +19,7 @@ scripts/build.sh [v0.1.0]  # 编译 dist/LogDiagCollector-<版本>-win-x64.exe
 - 认证失败立即停止，不自动重试（防止 BMC 账号被锁）。会话用完必须删除（`Logout`），取消时也一样。
 - 任务取消只停止本地等待，不去中断设备端任务。
 - 新驱动放 `internal/collect/<品牌>/`，实现 `collect.Driver`，在 `internal/drivers` 的 `Brands` 里登记；驱动只管触发、等待、下载，文件落盘、校验和 manifest 用 `Job.Save`。日志类型编码（manifest 的 `log.type`）与网站共用，新增时同步改 `docs/schema/manifest-1.schema.json` 的示例。
+- 网络设备走 SSH 命令行，不按品牌分目录：在 `internal/collect/netdev/profiles.go` 里按系统加 profile（同一系统可能跨品牌，例如 HPE 的 Comware 交换机），识别规则和命令都在那里；只发查看类命令，关分页只用会话级命令。输出的脱敏规则在 `netdev/redact.go`，加规则时同步加 `TestRedact` 的用例。模拟设备在 `internal/netsim`，合成记录用 `go test ./internal/drivers -run TestNetworkReplay -args -update-net` 重新生成。
 - 新增设备支持必须附回放测试：录制记录放 `testdata/`（整机收集流程放 `internal/drivers/testdata/`），`note` 字段写明“真机录制：品牌 型号 固件”或“合成：依据哪份文档”。不要把合成记录当成真机验证结果。
 - 诊断记录不能含密码、令牌、Cookie、设备 IP（`internal/httprec` 负责脱敏），新增凭据字段时同步更新 `redact.go` 的规则。
 - 新文件加 `SPDX-License-Identifier: GPL-3.0-or-later` 头。依赖只用 MIT、BSD、Apache-2.0 等与 GPL-3.0 兼容的许可，不复制 GPL-3.0 以外许可的代码（例如浪潮 inspursmsdk 只参考接口行为）。

@@ -1,0 +1,79 @@
+{
+  "format": "logdiag.netrec/1",
+  "note": "合成：netsim 模拟的华为 CE6850（VRP V200R005），不是真机。依据华为 CloudEngine 交换机命令参考（screen-length 0 temporary、display version、display esn、display logbuffer、display trapbuffer、display diagnostic-information）。登录后提示修改密码时答 N，诊断信息命令确认继续时答 Y。",
+  "tool": "netsim",
+  "recorded_at": "2026-10-24T10:00:00+08:00",
+  "server_version": "SSH-2.0-HUAWEI-1.5",
+  "host_key": "ssh-ed25519 SHA256:uReMTFijSDJMIrHpQKCSe5FxI2y26HTL/IvGWR32tkk",
+  "steps": [
+    {
+      "at_ms": 0,
+      "output": {
+        "text": "\r\nInfo: The max number of VTY users is 10, the number of current VTY users online is 1, and total number of terminal users online is 1.\r\n      The current login time is 2026-10-26 14:03:11+08:00.\r\n      The last login time is 2026-10-20 09:12:45+08:00 from 10.20.0.99 through SSH.\r\n\r\nWarning: The password ****** expire in 5 days.\r\nThe password ****** to be changed. Change now? [Y/N]:"
+      }
+    },
+    {
+      "send": "N\n",
+      "at_ms": 30,
+      "output": {
+        "text": "N\r\n\r\n\u003cHUAWEI-CE-01\u003e"
+      }
+    },
+    {
+      "send": "\n",
+      "at_ms": 61,
+      "output": {
+        "text": "\r\n\u003cHUAWEI-CE-01\u003e"
+      }
+    },
+    {
+      "send": "screen-length 0 temporary\n",
+      "at_ms": 91,
+      "output": {
+        "text": "screen-length 0 temporary\r\nInfo: The configuration takes effect on the current user terminal interface only.\r\n\u003cHUAWEI-CE-01\u003e"
+      }
+    },
+    {
+      "send": "display version\n",
+      "at_ms": 122,
+      "output": {
+        "text": "display version\r\nHuawei Versatile Routing Platform Software\r\nVRP (R) software, Version 8.180 (CE6850 V200R005C10SPC800)\r\nCopyright (C) 2012-2018 Huawei Technologies Co., Ltd.\r\nHUAWEI CE6850-48S6Q-HI uptime is 45 days, 6 hours, 7 minutes\r\nPatch Version: V200R005SPH012\r\n\r\nCE6850-48S6Q-HI(Master) 1 : uptime is  45 days, 6 hours, 6 minutes\r\n        StartupTime 2026/09/10   08:00:00\r\nMemory    Size    : 2048 M bytes\r\nFlash     Size    : 1024 M bytes\r\nCE6850-48S6Q-HI version information\r\n1. PCB    Version : CEM48S6QP04    VER B\r\n2. MAB    Version : 1\r\n3. Board  Type    : CE6850-48S6Q-HI\r\n4. CPLD1  Version : 102\r\n5. BIOS   Version : 386\r\n\u003cHUAWEI-CE-01\u003e"
+      }
+    },
+    {
+      "send": "display esn\n",
+      "at_ms": 152,
+      "output": {
+        "text": "display esn\r\nESN of slot 1: 2102350DLS10SYNTH001\r\n\u003cHUAWEI-CE-01\u003e"
+      }
+    },
+    {
+      "send": "display logbuffer\n",
+      "at_ms": 183,
+      "output": {
+        "text": "display logbuffer\r\nLogging buffer configuration and contents : enabled\r\nAllowed max buffer size : 1024\r\nActual buffer size : 512\r\nChannel number : 4 , Channel name : logbuffer\r\nDropped messages : 0\r\nOverwritten messages : 0\r\nCurrent messages : 3\r\n\r\nOct 26 2026 13:52:10 HUAWEI-CE-01 %%01IFNET/4/IF_STATE(l)[0]:Interface 10GE1/0/24 has turned into DOWN state.\r\nOct 26 2026 13:57:02 HUAWEI-CE-01 %%01DEVM/1/hwFanRemove_active(l)[1]:The fan module was removed. (EntityPhysicalIndex=16842752, EntPhysicalIndex=16842752, EntPhysicalName=FAN2, EntityTrapFaultID=137216)\r\nOct 26 2026 13:58:40 HUAWEI-CE-01 %%01SSH/5/SSH_USER_LOGIN(l)[2]:The SSH user succeeded in logging in. (ServiceType=stelnet, UserName=admin, UserAddress=10.20.0.99, LocalAddress=10.20.0.1, VPNInstanceName=_public_)\r\n\u003cHUAWEI-CE-01\u003e"
+      }
+    },
+    {
+      "send": "display trapbuffer\n",
+      "at_ms": 214,
+      "output": {
+        "text": "display trapbuffer\r\nTrapping buffer configuration and contents : enabled\r\nAllowed max buffer size : 1024\r\nActual buffer size : 256\r\nChannel number : 3 , Channel name : trapbuffer\r\nDropped messages : 0\r\nOverwritten messages : 0\r\nCurrent messages : 1\r\n\r\nOct 26 2026 13:58:02 HUAWEI-CE-01 IFNET/2/linkDown_active(t):CID=0x807a0405-alarmID=0x08520003;The interface status changes. (ifName=10GE1/0/48, AdminStatus=UP, OperStatus=DOWN, Reason=The interface is shut down)\r\n\u003cHUAWEI-CE-01\u003e"
+      }
+    },
+    {
+      "send": "display diagnostic-information\n",
+      "at_ms": 245,
+      "output": {
+        "text": "display diagnostic-information\r\nInfo: It will take a long time if the content you search is too much or the string you input is too long, you can press CTRL_C to break.\r\nContinue? [Y/N]:"
+      }
+    },
+    {
+      "send": "y\n",
+      "at_ms": 326,
+      "output": {
+        "text": "y\r\n\r\n===============================================\r\n  ===============display clock===============\r\n===============================================\r\n\r\n2026-10-26 14:03:11+08:00\r\nMonday\r\nTime Zone(DefaultZoneName) : UTC+08:00\r\n\r\n===============================================\r\n  ===============display version===============\r\n===============================================\r\n\r\nHuawei Versatile Routing Platform Software\r\nVRP (R) software, Version 8.180 (CE6850 V200R005C10SPC800)\r\nCopyright (C) 2012-2018 Huawei Technologies Co., Ltd.\r\nHUAWEI CE6850-48S6Q-HI uptime is 45 days, 6 hours, 7 minutes\r\nPatch Version: V200R005SPH012\r\n\r\nCE6850-48S6Q-HI(Master) 1 : uptime is  45 days, 6 hours, 6 minutes\r\n        StartupTime 2026/09/10   08:00:00\r\nMemory    Size    : 2048 M bytes\r\nFlash     Size    : 1024 M bytes\r\nCE6850-48S6Q-HI version information\r\n1. PCB    Version : CEM48S6QP04    VER B\r\n2. MAB    Version : 1\r\n3. Board  Type    : CE6850-48S6Q-HI\r\n4. CPLD1  Version : 102\r\n5. BIOS   Version : 386\r\n\r\n===============================================\r\n  ===============display current-configuration===============\r\n===============================================\r\n\r\n!Software Version V200R005C10SPC800\r\n!Last configuration was updated at 2026-10-19 10:00:00+08:00 by admin\r\n#\r\nsysname HUAWEI-CE-01\r\n#\r\naaa\r\n local-user admin password irreversible-cipher ******\r\n local-user admin service-type ssh\r\n local-user admin level 3\r\n#\r\nhwtacacs-server template tac1\r\n hwtacacs-server authentication 10.20.0.60\r\n hwtacacs-server shared-key cipher ******\r\n#\r\nospf 1\r\n area 0.0.0.0\r\n  authentication-mode md5 ****** cipher ******\r\n#\r\nsnmp-agent\r\nsnmp-agent community read cipher ******\r\nsnmp-agent community write cipher ******\r\nsnmp-agent sys-info version v2c v3\r\nsnmp-agent target-host trap address udp-domain 10.20.0.50 params securityname cipher ****** v2c\r\n#\r\nuser-interface vty 0 4\r\n authentication-mode aaa\r\n set authentication password cipher ******\r\n#\r\nreturn\r\n\r\n===============================================\r\nCollecting data, please wait ... done\r\n  ===============display esn===============\r\n===============================================\r\n\r\nESN of slot 1: 2102350DLS10SYNTH001\r\n\r\n===============================================\r\n  ===============display device===============\r\n===============================================\r\n\r\nSlot  Card   Type               Online   Power Register     Alarm     Primary\r\n1     -      CE6850-48S6Q-HI    Present  On    Registered   Normal    Master\r\nFAN1  -      FAN-40SB-B         Present  On    Registered   Normal    NA\r\nFAN2  -      FAN-40SB-B         Absent   -     -            -         NA\r\n\r\n===============================================\r\n  ===============display interface brief===============\r\n===============================================\r\n\r\n10GE1/0/1            up     up       0.10%   0.10%          1          1\r\n  Input:  100000 packets, 64000000 bytes; CRC: 1, Giants: 0, Runts: 0\r\n  Output: 90000 packets, 58000000 bytes; Discard: 0\r\n10GE1/0/2            up     up       0.20%   0.20%          2          2\r\n  Input:  200000 packets, 128000000 bytes; CRC: 2, Giants: 0, Runts: 0\r\n  Output: 180000 packets, 116000000 bytes; Discard: 0\r\n10GE1/0/3            up     up       0.30%   0.30%          3          0\r\n  Input:  300000 packets, 192000000 bytes; CRC: 3, Giants: 0, Runts: 0\r\n  Output: 270000 packets, 174000000 bytes; Discard: 0\r\n10GE1/0/4            up     up       0.40%   0.40%          4          1\r\n  Input:  400000 packets, 256000000 bytes; CRC: 4, Giants: 0, Runts: 0\r\n  Output: 360000 packets, 232000000 bytes; Discard: 0\r\n10GE1/0/5            up     up       0.50%   0.50%          0          2\r\n  Input:  500000 packets, 320000000 bytes; CRC: 0, Giants: 0, Runts: 0\r\n  Output: 450000 packets, 290000000 bytes; Discard: 0\r\n10GE1/0/6            up     up       0.60%   0.60%          1          0\r\n  Input:  600000 packets, 384000000 bytes; CRC: 1, Giants: 0, Runts: 0\r\n  Output: 540000 packets, 348000000 bytes; Discard: 0\r\n10GE1/0/7            up     up       0.70%   0.00%          2          1\r\n  Input:  700000 packets, 448000000 bytes; CRC: 2, Giants: 0, Runts: 0\r\n  Output: 630000 packets, 406000000 bytes; Discard: 0\r\n10GE1/0/8            up     up       0.80%   0.10%          3          2\r\n  Input:  800000 packets, 512000000 bytes; CRC: 3, Giants: 0, Runts: 0\r\n  Output: 720000 packets, 464000000 bytes; Discard: 0\r\n\r\n===============================================\r\n  ===============display logbuffer===============\r\n===============================================\r\n\r\nLogging buffer configuration and contents : enabled\r\nAllowed max buffer size : 1024\r\nActual buffer size : 512\r\nChannel number : 4 , Channel name : logbuffer\r\nDropped messages : 0\r\nOverwritten messages : 0\r\nCurrent messages : 3\r\n\r\nOct 26 2026 13:52:10 HUAWEI-CE-01 %%01IFNET/4/IF_STATE(l)[0]:Interface 10GE1/0/24 has turned into DOWN state.\r\nOct 26 2026 13:57:02 HUAWEI-CE-01 %%01DEVM/1/hwFanRemove_active(l)[1]:The fan module was removed. (EntityPhysicalIndex=16842752, EntPhysicalIndex=16842752, EntPhysicalName=FAN2, EntityTrapFaultID=137216)\r\nOct 26 2026 13:58:40 HUAWEI-CE-01 %%01SSH/5/SSH_USER_LOGIN(l)[2]:The SSH user succeeded in logging in. (ServiceType=stelnet, UserName=admin, UserAddress=10.20.0.99, LocalAddress=10.20.0.1, VPNInstanceName=_public_)\r\n\r\n===============================================\r\n  ===============display history-command===============\r\n===============================================\r\n\r\n\u003cHUAWEI-CE-01\u003e\r\n  display version\r\n  display diagnostic-information\r\n\u003cHUAWEI-CE-01\u003e"
+      }
+    }
+  ]
+}

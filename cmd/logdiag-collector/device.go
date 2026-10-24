@@ -3,7 +3,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"net/http"
@@ -62,18 +61,39 @@ func (d *deviceConn) finish(path, note string, stdout, stderr io.Writer) {
 
 // askPassword 优先读环境变量 LOGDIAG_PASSWORD，否则提示输入（终端里不回显）。
 func askPassword(user string, stdin io.Reader, stderr io.Writer) (string, error) {
-	if p := os.Getenv("LOGDIAG_PASSWORD"); p != "" {
+	return askSecret(user+" 的密码：", "LOGDIAG_PASSWORD", stdin, stderr)
+}
+
+// askSecret 优先读环境变量 env，否则显示 prompt 提示输入（终端里不回显）。
+func askSecret(prompt, env string, stdin io.Reader, stderr io.Writer) (string, error) {
+	if p := os.Getenv(env); p != "" {
 		return p, nil
 	}
-	fmt.Fprintf(stderr, "%s 的密码：", user)
+	fmt.Fprint(stderr, prompt)
 	defer fmt.Fprintln(stderr)
 	if f, ok := stdin.(*os.File); ok && term.IsTerminal(int(f.Fd())) {
 		b, err := term.ReadPassword(int(f.Fd()))
 		return string(b), err
 	}
-	line, err := bufio.NewReader(stdin).ReadString('\n')
-	if err != nil && line == "" {
-		return "", err
+	return readLine(stdin)
+}
+
+// readLine 从不是终端的输入（管道、文件）读一行。逐字节读、不多读，后面还能接着读下一个密码。
+func readLine(r io.Reader) (string, error) {
+	var line []byte
+	var c [1]byte
+	for {
+		n, err := r.Read(c[:])
+		if n == 1 && c[0] == '\n' {
+			break
+		}
+		line = append(line, c[:n]...)
+		if err != nil {
+			if len(line) == 0 {
+				return "", err
+			}
+			break
+		}
 	}
-	return strings.TrimRight(line, "\r\n"), nil
+	return strings.TrimRight(string(line), "\r"), nil
 }

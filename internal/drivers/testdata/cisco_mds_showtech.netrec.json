@@ -1,0 +1,58 @@
+{
+  "format": "logdiag.netrec/1",
+  "note": "合成：netsim 模拟的 Cisco MDS 9148S（NX-OS 8.4），不是真机。依据 Cisco MDS 9000 NX-OS 命令参考（show version、show inventory、show logging logfile、show tech-support details）。",
+  "tool": "netsim",
+  "recorded_at": "2026-10-24T10:00:00+08:00",
+  "server_version": "SSH-2.0-OpenSSH_8.3",
+  "host_key": "ssh-ed25519 SHA256:ie4a0dqEef4Zvt+8of5mXyuhjE0B099nBj6nVCmZtZQ",
+  "steps": [
+    {
+      "at_ms": 0,
+      "output": {
+        "text": "\r\n##############################################################\r\n#  Authorized access only. Activity is logged and monitored.  #\r\n##############################################################\r\n\r\nMDS-FAB-A#"
+      }
+    },
+    {
+      "send": "\n",
+      "at_ms": 30,
+      "output": {
+        "text": "\r\nMDS-FAB-A#"
+      }
+    },
+    {
+      "send": "terminal length 0\n",
+      "at_ms": 61,
+      "output": {
+        "text": "terminal length 0\r\nMDS-FAB-A#"
+      }
+    },
+    {
+      "send": "show version\n",
+      "at_ms": 91,
+      "output": {
+        "text": "show version\r\nCisco Nexus Operating System (NX-OS) Software\r\nTAC support: http://www.cisco.com/tac\r\nCopyright (c) 2002-2021, Cisco Systems, Inc. All rights reserved.\r\n\r\nSoftware\r\n  BIOS:      version 1.0.19\r\n  loader:    version N/A\r\n  kickstart: version 8.4(2c)\r\n  system:    version 8.4(2c)\r\n  BIOS compile time:       01/08/14\r\n  kickstart image file is: bootflash:///m9100-s6ek9-kickstart-mz.8.4.2c.bin\r\n  system image file is:    bootflash:///m9100-s6ek9-mz.8.4.2c.bin\r\n\r\nHardware\r\n  cisco MDS 9148S 16G 48 FC (1 Slot) Chassis (\"2/4/8/16 Gbps FC/Supervisor\")\r\n  Motorola, e500v2, core 0 with 4088636 kB of memory.\r\n  Processor Board ID JAFSYNTH0SUP\r\n\r\n  Device name: MDS-FAB-A\r\n  bootflash:    4001760 kB\r\nKernel uptime is 120 day(s), 1 hour(s), 2 minute(s), 3 second(s)\r\nMDS-FAB-A#"
+      }
+    },
+    {
+      "send": "show inventory\n",
+      "at_ms": 122,
+      "output": {
+        "text": "show inventory\r\nNAME: \"Chassis\",  DESCR: \"MDS 9148S 16G 48 FC (1 Slot) Chassis\"\r\nPID: DS-C9148S-K9        ,  VID: V01 ,  SN: JAFSYNTH003\r\n\r\nNAME: \"Slot 1\",  DESCR: \"2/4/8/16 Gbps FC/Supervisor\"\r\nPID: DS-C9148S-K9-SUP    ,  VID: V01 ,  SN: JAFSYNTH0SUP\r\nMDS-FAB-A#"
+      }
+    },
+    {
+      "send": "show logging logfile\n",
+      "at_ms": 153,
+      "output": {
+        "text": "show logging logfile\r\n2026 Oct 26 13:50:01 MDS-FAB-A %ETHPORT-5-IF_DOWN_LINK_FAILURE: Interface Ethernet1/12 is down (Link failure)\r\n2026 Oct 26 13:51:44 MDS-FAB-A %PLATFORM-2-FAN_REMOVED: Fan module 3 (Serial number ) Fan3(sys_fan3) removed\r\n2026 Oct 26 13:58:40 MDS-FAB-A %AUTHPRIV-6-SYSTEM_MSG: pam_unix(dcos_sshd:session): session opened for user admin - dcos_sshd[12345]\r\nMDS-FAB-A#"
+      }
+    },
+    {
+      "send": "show tech-support details\n",
+      "at_ms": 184,
+      "output": {
+        "text": "show tech-support details\r\n\r\n`show clock`\r\n*14:03:11.000 CST Mon Oct 26 2026\r\n\r\n`show version`\r\nCisco Nexus Operating System (NX-OS) Software\r\nTAC support: http://www.cisco.com/tac\r\nCopyright (c) 2002-2021, Cisco Systems, Inc. All rights reserved.\r\n\r\nSoftware\r\n  BIOS:      version 1.0.19\r\n  loader:    version N/A\r\n  kickstart: version 8.4(2c)\r\n  system:    version 8.4(2c)\r\n  BIOS compile time:       01/08/14\r\n  kickstart image file is: bootflash:///m9100-s6ek9-kickstart-mz.8.4.2c.bin\r\n  system image file is:    bootflash:///m9100-s6ek9-mz.8.4.2c.bin\r\n\r\nHardware\r\n  cisco MDS 9148S 16G 48 FC (1 Slot) Chassis (\"2/4/8/16 Gbps FC/Supervisor\")\r\n  Motorola, e500v2, core 0 with 4088636 kB of memory.\r\n  Processor Board ID JAFSYNTH0SUP\r\n\r\n  Device name: MDS-FAB-A\r\n  bootflash:    4001760 kB\r\nKernel uptime is 120 day(s), 1 hour(s), 2 minute(s), 3 second(s)\r\n\r\n`show running-config`\r\n\r\n!Command: show running-config\r\n!Running configuration last done at: Mon Oct 19 10:00:00 2026\r\nversion 9.3(8) Bios:version 07.69\r\nhostname MDS-FAB-A\r\nfeature tacacs+\r\nfeature lacp\r\nusername admin password 5 ******  role network-admin\r\nusername monitor password 5 ******  role network-operator\r\ntacacs-server key 7 ******\r\ntacacs-server host 10.20.0.60 key 7 ******\r\nsnmp-server user admin network-admin auth md5 ****** priv ****** localizedkey\r\nsnmp-server host 10.20.0.50 traps version 2c ******\r\nsnmp-server community ****** group network-operator\r\nntp authentication-key 1 md5 ****** 7\r\ninterface Ethernet1/1\r\n  description uplink-to-core\r\n  no shutdown\r\n\r\n`show inventory`\r\nNAME: \"Chassis\",  DESCR: \"MDS 9148S 16G 48 FC (1 Slot) Chassis\"\r\nPID: DS-C9148S-K9        ,  VID: V01 ,  SN: JAFSYNTH003\r\n\r\nNAME: \"Slot 1\",  DESCR: \"2/4/8/16 Gbps FC/Supervisor\"\r\nPID: DS-C9148S-K9-SUP    ,  VID: V01 ,  SN: JAFSYNTH0SUP\r\n\r\n`show environment all`\r\nFAN PS-1 is OK\r\nFAN 1 is OK\r\nFAN 2 is OK\r\nFAN 3 is FAULTY\r\nSYSTEM TEMPERATURE is OK\r\nSystem Temperature Value: 38 Degree Celsius\r\nPower Supply A: OK\r\n\r\n`show interfaces`\r\nEthernet1/1 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0001 (bia 0011.2233.0001)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     100000 packets input, 64000000 bytes, 0 no buffer\r\n     1 input errors, 1 CRC, 0 frame, 0 overrun, 0 ignored\r\n     90000 packets output, 58000000 bytes, 0 underruns\r\nEthernet1/2 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0002 (bia 0011.2233.0002)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     200000 packets input, 128000000 bytes, 0 no buffer\r\nCollecting data, please wait ... done\r\n     2 input errors, 2 CRC, 0 frame, 0 overrun, 0 ignored\r\n     180000 packets output, 116000000 bytes, 0 underruns\r\nEthernet1/3 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0003 (bia 0011.2233.0003)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     300000 packets input, 192000000 bytes, 0 no buffer\r\n     3 input errors, 3 CRC, 0 frame, 0 overrun, 0 ignored\r\n     270000 packets output, 174000000 bytes, 0 underruns\r\nEthernet1/4 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0004 (bia 0011.2233.0004)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     400000 packets input, 256000000 bytes, 0 no buffer\r\n     4 input errors, 4 CRC, 0 frame, 0 overrun, 0 ignored\r\n     360000 packets output, 232000000 bytes, 0 underruns\r\nEthernet1/5 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0005 (bia 0011.2233.0005)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     500000 packets input, 320000000 bytes, 0 no buffer\r\n     5 input errors, 0 CRC, 0 frame, 0 overrun, 0 ignored\r\n     450000 packets output, 290000000 bytes, 0 underruns\r\nEthernet1/6 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0006 (bia 0011.2233.0006)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     600000 packets input, 384000000 bytes, 0 no buffer\r\n     6 input errors, 1 CRC, 0 frame, 0 overrun, 0 ignored\r\n     540000 packets output, 348000000 bytes, 0 underruns\r\nEthernet1/7 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0007 (bia 0011.2233.0007)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     700000 packets input, 448000000 bytes, 0 no buffer\r\n     0 input errors, 2 CRC, 0 frame, 0 overrun, 0 ignored\r\n     630000 packets output, 406000000 bytes, 0 underruns\r\nEthernet1/8 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0008 (bia 0011.2233.0008)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     800000 packets input, 512000000 bytes, 0 no buffer\r\n     1 input errors, 3 CRC, 0 frame, 0 overrun, 0 ignored\r\n     720000 packets output, 464000000 bytes, 0 underruns\r\n\r\n`show logging`\r\nSyslog logging: enabled (0 messages dropped, 2 messages rate-limited, 0 flushes, 0 overruns, xml disabled, filtering disabled)\r\n\r\n    Console logging: level debugging, 120 messages logged, xml disabled,\r\n                     filtering disabled\r\n    Buffer logging:  level debugging, 120 messages logged, xml disabled,\r\n                    filtering disabled\r\n    Trap logging: level informational, 124 message lines logged\r\n        Logging to 10.20.0.50  (udp port 514, audit disabled,\r\n              link up),\r\n              124 message lines logged,\r\n              0 message lines rate-limited,\r\n              0 message lines dropped-by-MD,\r\n              xml disabled, sequence number disabled\r\n              filtering disabled\r\n\r\nLog Buffer (16384 bytes):\r\n\r\nOct 26 13:52:10.123: %LINK-3-UPDOWN: Interface GigabitEthernet1/0/24, changed state to down\r\nOct 26 13:52:11.130: %LINEPROTO-5-UPDOWN: Line protocol on Interface GigabitEthernet1/0/24, changed state to down\r\nOct 26 13:57:02.881: %PLATFORM_ENV-1-FAN: Faulty fan detected\r\nOct 26 13:58:40.002: %SYS-5-CONFIG_I: Configured from console by admin on vty0 (10.20.0.99)\r\nMDS-FAB-A log end\r\n\r\n`show history all`\r\nMDS-FAB-A#\r\n  show version\r\n  show tech-support\r\nMDS-FAB-A#"
+      }
+    }
+  ]
+}
