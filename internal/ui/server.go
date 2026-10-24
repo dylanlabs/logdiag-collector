@@ -148,6 +148,9 @@ func (s *Server) reopen() (string, bool) {
 	return s.URL() + "?token=" + t, true
 }
 
+// shutdownTimeout 是退出时等进行中的请求收尾的最长时间。
+const shutdownTimeout = 5 * time.Second
+
 // Run 处理请求，直到 ctx 结束或界面关闭超过 IdleExit。
 func (s *Server) Run(ctx context.Context) error {
 	errc := make(chan error, 1)
@@ -161,7 +164,7 @@ func (s *Server) Run(ctx context.Context) error {
 		return err
 	}
 	close(s.stopping) // 让事件流先结束，否则 Shutdown 会一直等它
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	err := s.srv.Shutdown(shutdownCtx)
 	<-errc
