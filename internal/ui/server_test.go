@@ -9,6 +9,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/cookiejar"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -176,4 +178,84 @@ func TestIdleExitAfterWindowCloses(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("窗口关闭后应自动退出")
 	}
+}
+
+func TestSecondLaunchOpensWindowInRunningInstance(t *testing.T) {
+	dir := t.TempDir()
+	if FindRunning(dir) != "" {
+		t.Fatal("没有登记时不应找到正在运行的程序")
+	}
+	s, _ := startServer(t, Options{IdleExit: time.Minute})
+	unregister, err := s.Register(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 第一个窗口用掉启动令牌后，再次启动的程序拿到的新地址仍能登录。
+	get(t, browser(t), s.LaunchURL())
+	launch := FindRunning(dir)
+	if launch == "" || launch == s.LaunchURL() {
+		t.Fatalf("应拿到带新令牌的地址：%q", launch)
+	}
+	b := browser(t)
+	if resp, _ := get(t, b, launch); resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("新地址应能换取 Cookie：%d", resp.StatusCode)
+	}
+	if resp, _ := get(t, b, s.URL()+"api/info"); resp.StatusCode != http.StatusOK {
+		t.Errorf("新窗口应已登录：%d", resp.StatusCode)
+	}
+	if resp, _ := get(t, browser(t), launch); resp.StatusCode != http.StatusForbidden {
+		t.Errorf("新令牌也只能用一次：%d", resp.StatusCode)
+	}
+
+	// 没有密钥或用 GET 都不行。
+	for _, req := range []*http.Request{
+		mustRequest(t, http.MethodPost, s.URL()+"instance/open", ""),
+		mustRequest(t, http.MethodGet, s.URL()+"instance/open", "wrong"),
+	} {
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusForbidden {
+			t.Errorf("%s 无密钥应拒绝：%d", req.Method, resp.StatusCode)
+		}
+	}
+
+	unregister()
+	if _, err := os.Stat(filepath.Join(dir, instanceFile)); !os.IsNotExist(err) {
+		t.Errorf("退出时应删除登记文件：%v", err)
+	}
+}
+
+func TestFindRunningIgnoresStaleFile(t *testing.T) {
+	dir := t.TempDir()
+	s, err := New(Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Register(dir); err != nil {
+		t.Fatal(err)
+	}
+	s.ln.Close() // 程序没正常退出，登记文件还在
+	if got := FindRunning(dir); got != "" {
+		t.Errorf("程序已退出时不应返回地址：%q", got)
+	}
+	os.WriteFile(filepath.Join(dir, instanceFile), []byte(`{"url":"http://example.com/","key":"k"}`), 0o600)
+	if got := FindRunning(dir); got != "" {
+		t.Errorf("只接受本机地址：%q", got)
+	}
+}
+
+func mustRequest(t *testing.T, method, url, key string) *http.Request {
+	t.Helper()
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if key != "" {
+		req.Header.Set(instanceHeader, key)
+	}
+	return req
 }

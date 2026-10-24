@@ -32,6 +32,12 @@ type Options struct {
 	IdleExit time.Duration
 	// Logger 为 nil 时不记录日志。
 	Logger *slog.Logger
+	// Hub 把后台变化推给界面，为 nil 时新建一个。
+	Hub *Hub
+	// App 是界面背后的设备库、设置和任务中心；为 nil 时只有界面外壳和 /api/info（测试用）。
+	App *App
+	// Busy 报告是否还有后台任务。界面窗口都关闭后，等任务结束再退出。
+	Busy func() bool
 }
 
 // Server 是本机界面服务。
@@ -44,13 +50,16 @@ type Server struct {
 	cookie  string // Cookie 名带端口：Cookie 不区分端口，多开时互不覆盖
 	session string // Cookie 值
 
-	mu        sync.Mutex
-	token     string // 一次性启动令牌，用过后清空
-	clients   int
-	idleTimer *time.Timer
-	idleOnce  sync.Once
-	idle      chan struct{}
-	stopping  chan struct{}
+	mu          sync.Mutex
+	first       string          // 第一个窗口用的启动令牌
+	tokens      map[string]bool // 还没用过的一次性启动令牌
+	instanceKey string          // 再次启动的程序请求开新窗口时用的密钥，见 instance.go
+	clients     int
+	idleTimer   *time.Timer
+	idleOnce    sync.Once
+	waitingBusy bool
+	idle        chan struct{}
+	stopping    chan struct{}
 }
 
 // New 开始监听，但还不处理请求；调用 Run 开始服务。
@@ -60,6 +69,9 @@ func New(opts Options) (*Server, error) {
 	}
 	if opts.Logger == nil {
 		opts.Logger = slog.New(slog.DiscardHandler)
+	}
+	if opts.Hub == nil {
+		opts.Hub = NewHub()
 	}
 	host, _, err := net.SplitHostPort(opts.Addr)
 	if err != nil {
@@ -74,13 +86,15 @@ func New(opts Options) (*Server, error) {
 	}
 	_, port, _ := net.SplitHostPort(ln.Addr().String())
 
+	first := randomHex(32)
 	s := &Server{
 		opts:     opts,
 		ln:       ln,
 		port:     port,
 		cookie:   "ldc_" + port,
 		session:  randomHex(32),
-		token:    randomHex(32),
+		first:    first,
+		tokens:   map[string]bool{first: true},
 		idle:     make(chan struct{}),
 		stopping: make(chan struct{}),
 		mux:      http.NewServeMux(),
@@ -88,6 +102,9 @@ func New(opts Options) (*Server, error) {
 	s.mux.Handle("GET /", http.FileServerFS(web.FS))
 	s.mux.HandleFunc("GET /api/info", s.handleInfo)
 	s.mux.HandleFunc("GET /api/events", s.handleEvents)
+	if opts.App != nil {
+		s.routes(opts.App)
+	}
 	s.srv = &http.Server{
 		Handler:           s,
 		ReadHeaderTimeout: 10 * time.Second,
@@ -109,9 +126,26 @@ func (s *Server) URL() string {
 
 // LaunchURL 返回带一次性令牌的地址，用于打开第一个窗口。
 func (s *Server) LaunchURL() string {
+	return s.URL() + "?token=" + s.first
+}
+
+// reopen 为再开一个窗口准备新的一次性令牌。程序正在退出时返回 false。
+func (s *Server) reopen() (string, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.URL() + "?token=" + s.token
+	select {
+	case <-s.idle:
+		return "", false
+	default:
+	}
+	// 新窗口连上之前不要因为“窗口都关了”而退出：重新计时。
+	if s.clients == 0 && s.idleTimer != nil {
+		s.idleTimer.Stop()
+		s.idleTimer = time.AfterFunc(s.opts.IdleExit, s.checkIdle)
+	}
+	t := randomHex(32)
+	s.tokens[t] = true
+	return s.URL() + "?token=" + t, true
 }
 
 // Run 处理请求，直到 ctx 结束或界面关闭超过 IdleExit。
@@ -147,6 +181,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
+	if r.URL.Path == instancePath {
+		s.handleInstance(w, r)
+		return
+	}
 	if r.URL.Path == "/" && r.URL.Query().Has("token") {
 		s.exchangeToken(w, r)
 		return
@@ -174,9 +212,12 @@ func (s *Server) allowedHost(hostport string) bool {
 func (s *Server) exchangeToken(w http.ResponseWriter, r *http.Request) {
 	given := r.URL.Query().Get("token")
 	s.mu.Lock()
-	ok := s.token != "" && subtle.ConstantTimeCompare([]byte(given), []byte(s.token)) == 1
-	if ok {
-		s.token = "" // 只能用一次：别的进程从命令行参数里看到也没用
+	ok := false
+	for t := range s.tokens {
+		if subtle.ConstantTimeCompare([]byte(given), []byte(t)) == 1 {
+			ok = true
+			delete(s.tokens, t) // 只能用一次：别的进程从命令行参数里看到也没用
+		}
 	}
 	s.mu.Unlock()
 	if !ok {
@@ -205,7 +246,8 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(buildinfo.Get())
 }
 
-// handleEvents 是界面的事件流。连接数归零一段时间后程序自动退出；以后的任务进度也走这里。
+// handleEvents 是界面的事件流：任务进度、设备状态等变化都从这里推送。
+// 连接数归零一段时间后程序自动退出。
 func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	fl, ok := w.(http.Flusher)
 	if !ok {
@@ -213,6 +255,8 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/event-stream")
+	events, unsubscribe := s.opts.Hub.subscribe()
+	defer unsubscribe()
 	s.clientConnected()
 	defer s.clientDisconnected()
 
@@ -226,6 +270,12 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 			return
 		case <-s.stopping:
 			return
+		case ev, ok := <-events:
+			if !ok {
+				return // 积压太多被断开，浏览器会重连并重新读取
+			}
+			fmt.Fprintf(w, "event: %s\ndata: %s\n\n", ev.name, ev.data)
+			fl.Flush()
 		case <-ping.C:
 			fmt.Fprint(w, ": ping\n\n")
 			fl.Flush()
@@ -237,6 +287,7 @@ func (s *Server) clientConnected() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.clients++
+	s.waitingBusy = false
 	if s.idleTimer != nil {
 		s.idleTimer.Stop()
 		s.idleTimer = nil
@@ -255,7 +306,17 @@ func (s *Server) clientDisconnected() {
 func (s *Server) checkIdle() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.clients == 0 {
-		s.idleOnce.Do(func() { close(s.idle) })
+	if s.clients != 0 {
+		return
 	}
+	if s.opts.Busy != nil && s.opts.Busy() {
+		// 窗口关了但收集还没完：等任务结束再退出，期间重新打开界面也能看到进度。
+		if !s.waitingBusy {
+			s.waitingBusy = true
+			s.opts.Logger.Info("界面已关闭，还有收集任务在进行，完成后自动退出；期间再次运行程序会重新打开界面")
+		}
+		s.idleTimer = time.AfterFunc(5*time.Second, s.checkIdle)
+		return
+	}
+	s.idleOnce.Do(func() { close(s.idle) })
 }

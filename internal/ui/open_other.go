@@ -5,7 +5,9 @@
 package ui
 
 import (
+	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 )
 
@@ -16,4 +18,17 @@ func OpenWindow(url string) error {
 		name = "open"
 	}
 	return exec.Command(name, url).Start()
+}
+
+// OpenURL 用系统默认浏览器打开外部网页。
+func OpenURL(url string) error { return OpenWindow(url) }
+
+// OpenFolder 用系统的文件管理器打开文件夹；path 是文件时打开所在文件夹。
+func OpenFolder(path string) error {
+	if st, err := os.Stat(path); err != nil {
+		return err
+	} else if !st.IsDir() {
+		path = filepath.Dir(path)
+	}
+	return OpenWindow(path)
 }

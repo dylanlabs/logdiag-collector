@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LogDiag Collector</title>
+<link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/assets/app.css">
 <script type="module" src="/assets/app.js"></script>
 </head>
@@ -14,37 +15,23 @@
       <div class="brand-name">LogDiag Collector</div>
       <div class="brand-version" id="version">&nbsp;</div>
     </div>
-    <nav class="nav" id="nav" aria-label="主导航">
-      <a href="#/devices" data-page="devices">设备列表</a>
-      <a href="#/collect" data-page="collect">日志收集</a>
-      <a href="#/health" data-page="health">健康与告警</a>
-      <a href="#/results" data-page="results">收集结果</a>
-      <a href="#/os" data-page="os">OS 巡检</a>
-      <a href="#/settings" data-page="settings">设置</a>
-    </nav>
+    <nav class="nav" id="nav" aria-label="主导航"></nav>
     <div class="side-foot">
-      <div class="copyright">© 2026 LogDiag</div>
-      <a class="btn btn-accent btn-block" href="https://logdiag.com/" target="_blank" rel="noopener noreferrer">开始分析日志</a>
-      <div class="side-icons">
-        <button type="button" class="icon-btn" data-action="update" title="检查更新" aria-label="检查更新">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>
-        </button>
-        <button type="button" class="icon-btn" data-action="language" title="语言" aria-label="语言">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.6 3.6 5.4 3.6 8.5s-1.1 5.9-3.6 8.5c-2.5-2.6-3.6-5.4-3.6-8.5S9.5 6.1 12 3.5z"/></svg>
-        </button>
-        <button type="button" class="icon-btn" data-action="feedback" title="问题反馈" aria-label="问题反馈">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 5.5h15v10h-8l-4.5 3.5v-3.5h-2.5z"/></svg>
-        </button>
+      <div class="logdiag-card">
+        <div class="copyright">© 2026 LogDiag</div>
+        <a class="btn btn-primary btn-small btn-block" id="analyze" href="https://logdiag.com/" target="_blank" rel="noopener noreferrer">开始分析日志</a>
       </div>
+      <div class="side-icons" id="side-icons"></div>
     </div>
   </aside>
-  <main class="main">
-    <header class="page-head"><h1 id="page-title"></h1></header>
-    <section class="page" id="page"></section>
+  <main class="main" id="main">
+    <div class="banner-stack" id="banners"></div>
+    <div class="page" id="page"></div>
   </main>
   <footer class="status-bar">
     <span class="tag tag-gray" id="conn">连接中</span>
-    <span id="status">本机模式</span>
+    <span class="status-text" id="status"></span>
+    <a class="status-tasks" id="status-tasks" href="#/collect" hidden></a>
   </footer>
 </div>
 </body>

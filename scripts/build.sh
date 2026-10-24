@@ -39,9 +39,10 @@ go tool go-winres make \
   --file-version "$version" >&2
 
 # -trimpath 去掉本机路径，同一提交在任何机器上编出相同的文件；不加壳（UPX 等）以免误报。
+# -H windowsgui 编成图形程序，双击运行时不出现命令行窗口（子命令的输入输出见 console_windows.go）。
 CGO_ENABLED=0 GOOS=windows GOARCH="$arch" go build \
   -trimpath \
-  -ldflags "-s -w -X github.com/dylanlabs/logdiag-collector/internal/buildinfo.Version=$version" \
+  -ldflags "-s -w -H windowsgui -X github.com/dylanlabs/logdiag-collector/internal/buildinfo.Version=$version" \
   -o "$out" "$pkg"
 
 rm -f "$pkg"/rsrc_windows_*.syso
