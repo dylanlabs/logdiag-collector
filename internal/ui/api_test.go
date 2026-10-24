@@ -260,6 +260,14 @@ func TestResultsAndOpenAPI(t *testing.T) {
 	if st := c.post("/api/open", map[string]any{"target": "path", "path": outside}, &e); st != http.StatusBadRequest {
 		t.Errorf("保存位置以外的路径不应打开：%d", st)
 	}
+	for _, link := range []string{"http://logdiag.com/", "https://evil.example/", "https://github.com/someone/else", "https://logdiag.com:8443/", "file:///C:/Windows"} {
+		if st := c.post("/api/open", map[string]any{"target": "link", "url": link}, &e); st != http.StatusBadRequest {
+			t.Errorf("不应打开 %s：%d", link, st)
+		}
+	}
+	if !allowedLink("https://logdiag.com/") || !allowedLink("https://github.com/dylanlabs/logdiag-collector/issues") {
+		t.Error("LogDiag 网站和项目页面应能打开")
+	}
 	if st := c.post("/api/results/package", map[string]any{"dirs": []string{"../x"}}, &e); st != http.StatusBadRequest {
 		t.Errorf("打包不存在的结果应失败：%d", st)
 	}

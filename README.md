@@ -18,7 +18,7 @@
 
 - 系统：Windows 10 / 11（x64）。
 - 在 [Releases](https://github.com/dylanlabs/logdiag-collector/releases) 下载 exe，双击运行。不需要安装，也不需要管理员权限。
-- 程序会打开一个独立窗口（Microsoft Edge 的应用模式；没有 Edge 时用默认浏览器）。旁边的命令行窗口显示运行状态，关闭界面窗口后程序自动退出。
+- 程序会打开一个独立窗口（Microsoft Edge 的应用模式；没有 Edge 时用默认浏览器），不会出现命令行窗口。关闭界面窗口后程序自动退出；还有收集任务时等任务完成再退出，期间再次运行程序会重新打开界面。
 - 开发中的测试版：每次提交都会在 [Actions](https://github.com/dylanlabs/logdiag-collector/actions/workflows/ci.yml) 里编出 exe，在运行记录页面底部的附件里下载（需要登录 GitHub）。
 
 下文把下载的文件简称为 `LogDiagCollector.exe`。
@@ -63,7 +63,7 @@ gh attestation verify LogDiagCollector.exe --repo dylanlabs/logdiag-collector
 | 健康与告警 | 计划 1.1 提供，目前只有页面布局 |
 | OS 巡检 | 计划 1.0 提供（Windows 巡检 1.1），目前只有页面布局，可在设置里隐藏 |
 
-设备列表和设置保存在 `%APPDATA%\LogDiag Collector\`（`devices.json`、`settings.json`），日志包默认保存在 `文档\LogDiag Collector\`，可在设置里修改。用 `LogDiagCollector.exe ui --data <文件夹>` 可以换一个数据文件夹。密码只能在加密时的电脑和 Windows 账号上解开，换电脑时请导出设备表再导入，并重新填写密码。
+设备列表、设置和运行日志保存在 `%APPDATA%\LogDiag Collector\`（`devices.json`、`settings.json`、`logdiag-collector.log`），界面窗口用的 Edge 数据在 `%LOCALAPPDATA%\LogDiag Collector\Edge\`（和你自己的 Edge 分开，不混用浏览记录、扩展和保存的密码），日志包默认保存在 `文档\LogDiag Collector\`，可在设置里修改。用 `LogDiagCollector.exe ui --data <文件夹>` 可以换一个数据文件夹。密码只能在加密时的电脑和 Windows 账号上解开，换电脑时请导出设备表再导入，并重新填写密码。
 
 界面上的收集遵守和命令行相同的规则：同一台设备同时只跑一个任务；认证失败立即停止，账号密码没改之前不会再登录这台设备；取消只停止本机等待，设备端的生成任务不受影响，登录会话照常退出。
 
@@ -77,7 +77,7 @@ LogDiagCollector.exe version               显示版本
 LogDiagCollector.exe help                  查看全部命令
 ```
 
-密码会提示输入（不回显），也可以事先放在环境变量 `LOGDIAG_PASSWORD` 里。
+密码会提示输入（不回显），也可以事先放在环境变量 `LOGDIAG_PASSWORD` 里。在 cmd、PowerShell 里运行 `probe`、`collect` 时会另开一个命令行窗口（输入密码、显示进度，结束后按回车关闭）；在脚本或 Git Bash 里运行、或者把输出重定向到文件时，输入输出走原来的窗口。
 
 `probe` 只读探测一台设备的 Redfish 接口：显示 Redfish 版本、型号、序列号、固件版本，以及设备支持的日志动作。它只调用读取类接口，不触发收集、不修改设备。不填 `--user` 时只匿名读取服务根，不登录、不产生审计日志。
 

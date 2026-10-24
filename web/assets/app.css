@@ -233,12 +233,18 @@ select.input { padding-right: 4px; }
 .input[list]:hover::-webkit-calendar-picker-indicator { opacity: 0.8; }
 
 .form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
-.form .span-2 { grid-column: 1 / -1; }
+.form-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.form .span-2 { grid-column: 1 / -1; } /* 占满整排 */
+.form .cols-2 { grid-column: span 2; }
 .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .field-label { color: var(--secondary); font-size: 9pt; font-weight: 600; }
+.field-optional { color: var(--faint); font-weight: 400; }
+.field-note { align-self: end; padding-bottom: 7px; color: var(--faint); font-size: 8.5pt; line-height: 1.5; }
+.radio-row .field-label { margin-right: -6px; }
 .field-hint { color: var(--faint); font-size: 8.5pt; line-height: 1.5; }
 .field .input { width: 100%; }
 .form-section { grid-column: 1 / -1; margin: 6px 0 -2px; padding-top: 10px; border-top: 1px solid var(--divider); color: var(--text); font-weight: 700; }
+.form-section-hint { margin-left: 10px; color: var(--faint); font-size: 8.5pt; font-weight: 400; }
 .check { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; user-select: none; }
 .check input { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); }
 .radio-row { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; min-height: 32px; }
@@ -454,3 +460,9 @@ table.grid { width: 100%; border-collapse: separate; border-spacing: 0; }
 .banner-stack .notice { align-items: flex-start; }
 .banner-stack .notice .btn { margin: -4px -6px -4px 0; color: inherit; }
 .banner-stack:empty { display: none; }
+
+/* 窗口很窄时三列表单改成两列 */
+@media (max-width: 760px) {
+  .form-3 { grid-template-columns: 1fr 1fr; }
+  .form .cols-2 { grid-column: 1 / -1; }
+}

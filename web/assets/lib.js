@@ -283,9 +283,38 @@ export function fmtSize(bytes) {
 // field 是带标签的表单项。
 export function field(label, control, hint, cls = '') {
   return h('label', { class: `field ${cls}` },
-    h('span', { class: 'field-label', text: label }),
+    h('span', { class: 'field-label' }, label),
     control,
     hint && h('span', { class: 'field-hint' }, hint));
+}
+
+// optional 是非必填项的标签：“备注（可选）”。
+export function optional(label) {
+  return [label, h('span', { class: 'field-optional', text: '（可选）' })];
+}
+
+// customerFilter 是“按客户筛选”下拉框。update(names, current) 按现有的客户名称重建选项，
+// 返回仍然有效的当前值（'' 表示全部客户，NO_CUSTOMER 表示没填客户的）。
+export const NO_CUSTOMER = '\x00';
+const zh = new Intl.Collator('zh-CN', { numeric: true, sensitivity: 'base' });
+
+export function customerFilter(onchange) {
+  const el = h('select', { class: 'input', 'aria-label': '按客户筛选', onchange: () => onchange(el.value) });
+  return {
+    el,
+    update(names, current) {
+      const list = [...new Set(names.map((n) => n || NO_CUSTOMER))].sort((a, b) => zh.compare(a, b));
+      const value = list.includes(current) ? current : '';
+      el.replaceChildren(h('option', { value: '', text: '全部客户' }),
+        ...list.map((n) => h('option', { value: n, selected: n === value, text: n === NO_CUSTOMER ? '（未填客户）' : n })));
+      return value;
+    },
+  };
+}
+
+// matchCustomer 判断名称是否符合 customerFilter 的当前值。
+export function matchCustomer(name, filter) {
+  return !filter || (name || NO_CUSTOMER) === filter;
 }
 
 export function input(attrs = {}) {

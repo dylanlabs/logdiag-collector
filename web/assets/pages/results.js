@@ -4,13 +4,12 @@
 
 import {
   h, icon, button, tag, notice, api, bus, dialog, showError, fmtTime, fmtSize, input, frame, empty, pageHead, soon,
-  keyedRows, setChildren,
+  keyedRows, setChildren, customerFilter, matchCustomer,
 } from '../lib.js';
 import { logTypes } from '../store.js';
 import { openPath, openLink, links } from '../actions.js';
 
 const view = { search: '', customer: '', selected: new Set() };
-const NO_CUSTOMER = '\x00';
 
 export function mount(root) {
   let entries = [];
@@ -23,7 +22,7 @@ export function mount(root) {
     type: 'search', placeholder: '搜索客户、IP、型号、序列号…', value: view.search, 'aria-label': '搜索结果',
     oninput: () => { view.search = search.value; render(); },
   });
-  const customer = h('select', { class: 'input', 'aria-label': '按客户筛选', onchange: () => { view.customer = customer.value; render(); } });
+  const customer = customerFilter((v) => { view.customer = v; render(); });
   const selInfo = h('span', { class: 'selection-info' });
   const btnPackage = button('生成离线上传包', { kind: 'primary', icon: 'package', onclick: () => buildPackage() });
   const btnUpload = button('上传到 LogDiag', { icon: 'upload', disabled: true, title: '即将支持（1.1）' });
@@ -42,12 +41,12 @@ export function mount(root) {
   const foot = h('div', { class: 'table-foot' });
   const tableCard = h('section', { class: 'card card-flush' },
     h('div', { class: 'toolbar' },
-      h('div', { class: 'search' }, icon('search'), search), customer,
+      h('div', { class: 'search' }, icon('search'), search), customer.el,
       h('div', { class: 'spacer' }), selInfo, h('span', { class: 'btn-with-tag' }, btnUpload, soon('1.1')), btnPackage),
     h('div', { class: 'table-wrap' },
       h('table', { class: 'grid' },
         h('thead', {}, h('tr', {}, h('th', { class: 'cell-check' }, headCheck),
-          ['收集时间', '客户名称', '管理口 IP', '品牌', '型号', '序列号', '日志类型', '大小', '文件', ''].map((t) => h('th', { text: t })))),
+          ['收集时间', '管理口 IP', '品牌', '型号', '序列号', '日志类型', '大小', '文件', ''].map((t) => h('th', { text: t })))),
         tbody)),
     foot);
   const emptyCard = h('section', { class: 'card' });
@@ -76,7 +75,6 @@ export function mount(root) {
     return h('tr', { class: sel ? 'clickable selected' : 'clickable', dataset: { dir: e.dir }, title: e.path },
       h('td', { class: 'cell-check' }, h('input', { type: 'checkbox', checked: sel, 'aria-label': '选择' })),
       h('td', { text: fmtTime(e.collected_at) }),
-      h('td', { text: e.customer || '' }),
       h('td', { text: d.mgmt_ip || '' }),
       h('td', { text: d.vendor || '' }),
       h('td', { text: d.model || '' }),
@@ -99,23 +97,20 @@ export function mount(root) {
         button('打开保存位置', { icon: 'folder', onclick: () => openPath('output') })));
       return;
     }
-    const names = [...new Set(entries.map((e) => e.customer || NO_CUSTOMER))].sort((a, b) => a.localeCompare(b, 'zh-CN'));
-    if (view.customer && !names.includes(view.customer)) view.customer = '';
-    customer.replaceChildren(h('option', { value: '', text: '全部客户' }),
-      ...names.map((n) => h('option', { value: n, selected: n === view.customer, text: n === NO_CUSTOMER ? '（未填客户）' : n })));
+    view.customer = customer.update(entries.map((e) => e.customer), view.customer);
 
     const dirs = new Set(entries.map((e) => e.dir));
     for (const d of view.selected) if (!dirs.has(d)) view.selected.delete(d);
     const q = view.search.trim().toLowerCase();
     shown = entries.filter((e) => {
-      if (view.customer && (e.customer || NO_CUSTOMER) !== view.customer) return false;
+      if (!matchCustomer(e.customer, view.customer)) return false;
       const d = e.device || {};
       return !q || [e.customer, d.mgmt_ip, d.vendor, d.model, d.serial, d.hostname, e.log?.type, logTypes[e.log?.type]]
         .some((v) => v && v.toLowerCase().includes(q));
     });
     setChildren(tbody, shown.length
       ? keyedRows(rowCache, shown, (e) => e.dir, (e) => JSON.stringify([e, view.selected.has(e.dir)]), row)
-      : [h('tr', {}, h('td', { class: 'cell-empty', colspan: 11, text: '没有符合条件的结果' }))]);
+      : [h('tr', {}, h('td', { class: 'cell-empty', colspan: 10, text: '没有符合条件的结果' }))]);
 
     const picked = shown.filter((e) => view.selected.has(e.dir));
     const customers = new Set(picked.map((e) => e.customer || ''));
@@ -124,7 +119,7 @@ export function mount(root) {
     headCheck.indeterminate = picked.length > 0 && picked.length < shown.length;
     let reason = '';
     if (!picked.length) reason = '勾选同一客户的结果后打包';
-    else if (customers.size > 1) reason = '一个离线上传包只能包含一个客户的结果';
+    else if (customers.size > 1) reason = '一个离线上传包只能包含一个客户的结果，请先按客户筛选';
     else if (broken) reason = `有 ${broken} 个结果文件不完整，请取消勾选或重新收集`;
     selInfo.textContent = picked.length ? `已选 ${picked.length} 个${reason ? `，${reason}` : ''}` : reason;
     selInfo.classList.toggle('text-danger', picked.length > 0 && !!reason);

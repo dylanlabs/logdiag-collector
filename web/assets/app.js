@@ -189,6 +189,10 @@ function buildSideIcons() {
   $('side-icons').replaceChildren(...items.map(([ic, title, onclick]) =>
     h('button', { type: 'button', class: 'icon-btn', title, 'aria-label': title, onclick }, icon(ic))));
   $('analyze').prepend(icon('open'));
+  $('analyze').addEventListener('click', (e) => {
+    e.preventDefault();
+    openLink(links.logdiag);
+  });
 }
 
 // ---------- 启动 ----------

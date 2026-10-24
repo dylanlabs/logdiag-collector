@@ -12,9 +12,10 @@ export const links = {
   issues: 'https://github.com/dylanlabs/logdiag-collector/issues',
 };
 
-// openLink 在系统浏览器里打开外部网页（只在用户点击时调用）。
+// openLink 在系统默认浏览器里打开外部网页（只在用户点击时调用）。
+// 界面窗口用的是单独的 Edge 用户数据文件夹，直接 window.open 会开在那里，而不是用户自己的浏览器。
 export function openLink(url) {
-  window.open(url, '_blank', 'noopener,noreferrer');
+  api.post('/api/open', { target: 'link', url }).catch(showError);
 }
 
 // openPath 在资源管理器里打开保存位置（output）、数据文件夹（data）或保存位置里的某个文件夹/文件（path）。

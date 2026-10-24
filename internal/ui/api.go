@@ -10,6 +10,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -459,11 +460,13 @@ func (a *App) buildPackage(w http.ResponseWriter, r *http.Request) (any, error) 
 	return res, nil
 }
 
-// open 在资源管理器里打开保存位置、数据文件夹，或保存位置里的某个结果。
+// open 在资源管理器里打开保存位置、数据文件夹，或保存位置里的某个结果；
+// target 为 link 时在系统默认浏览器里打开 LogDiag 网站或本项目的 GitHub 页面。
 func (a *App) open(w http.ResponseWriter, r *http.Request) (any, error) {
 	var body struct {
-		Target string `json:"target"` // output、data、path
+		Target string `json:"target"` // output、data、path、link
 		Path   string `json:"path"`
+		URL    string `json:"url"`
 	}
 	if err := decode(r, &body); err != nil {
 		return nil, err
@@ -471,6 +474,14 @@ func (a *App) open(w http.ResponseWriter, r *http.Request) (any, error) {
 	out := a.Settings.Get().OutputDir
 	var p string
 	switch body.Target {
+	case "link":
+		if !allowedLink(body.URL) {
+			return nil, badRequest("只能打开 LogDiag 网站和本项目的 GitHub 页面")
+		}
+		if err := OpenURL(body.URL); err != nil {
+			return nil, err
+		}
+		return map[string]bool{"ok": true}, nil
 	case "output":
 		if err := os.MkdirAll(out, 0o755); err != nil {
 			return nil, badRequest("无法创建保存位置：%v", err)
@@ -493,6 +504,21 @@ func (a *App) open(w http.ResponseWriter, r *http.Request) (any, error) {
 		return nil, err
 	}
 	return map[string]bool{"ok": true}, nil
+}
+
+// allowedLink 限定界面能打开的外部网页。
+func allowedLink(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" || u.User != nil || u.Port() != "" {
+		return false
+	}
+	switch u.Host {
+	case "logdiag.com", "www.logdiag.com":
+		return true
+	case "github.com":
+		return u.Path == "/dylanlabs/logdiag-collector" || strings.HasPrefix(u.Path, "/dylanlabs/logdiag-collector/")
+	}
+	return false
 }
 
 func (a *App) getSettings(w http.ResponseWriter, r *http.Request) (any, error) {

@@ -4,12 +4,12 @@
 
 import {
   h, icon, button, tag, notice, api, bus, confirm, toast, showError, download, fmtTime, fmtDuration, fmtSize,
-  input, select, frame, empty, pageHead, keyedRows, setChildren,
+  input, select, frame, empty, pageHead, keyedRows, setChildren, customerFilter, matchCustomer,
 } from '../lib.js';
 import { store, loadTasks, collectingIDs, deviceStatus, support, deviceLabel, logTypes } from '../store.js';
 import { startCollect, openPath } from '../actions.js';
 
-const view = { search: '', selected: new Set(), filter: 'all' };
+const view = { search: '', customer: '', selected: new Set(), filter: 'all' };
 
 const filters = [['all', '全部任务'], ['active', '进行中和排队'], ['failed', '失败和取消'], ['done', '已完成']];
 
@@ -104,6 +104,7 @@ export function mount(root) {
     type: 'search', placeholder: '搜索客户、IP、型号…', value: view.search, 'aria-label': '搜索设备',
     oninput: () => { view.search = search.value; render(); },
   });
+  const customer = customerFilter((v) => { view.customer = v; render(); });
   const selInfo = h('span', { class: 'selection-info' });
   const btnStart = button('开始收集', {
     kind: 'primary', icon: 'play',
@@ -132,12 +133,12 @@ export function mount(root) {
   const pickCard = h('section', { class: 'card card-flush' },
     h('div', { class: 'toolbar' },
       h('h2', { class: 'toolbar-title', text: '选择设备' }),
-      h('div', { class: 'search' }, icon('search'), search),
+      h('div', { class: 'search' }, icon('search'), search), customer.el,
       h('div', { class: 'spacer' }), selInfo, btnStart),
     h('div', { class: 'table-wrap short' },
       h('table', { class: 'grid' },
         h('thead', {}, h('tr', {}, h('th', { class: 'cell-check' }, headCheck),
-          ['客户名称', '管理口 IP', '品牌', '型号', '账号', '连通状态', '一键收集', '最后收集'].map((t) => h('th', { text: t })))),
+          ['管理口 IP', '品牌', '型号', '序列号', '账号', '连通状态', '一键收集', '最后收集'].map((t) => h('th', { text: t })))),
         pickBody)),
     h('div', { class: 'table-foot' },
       h('span', {}, `已支持一键收集：${store.state?.supported || '华为、超聚变、浪潮'}。联想、Dell、HPE 计划 v0.1，新华三、IBM 计划 v0.2；存储 v0.2，网络 1.0。`),
@@ -214,8 +215,10 @@ export function mount(root) {
     for (const id of view.selected) if (!ids.has(id) || collecting.has(id)) view.selected.delete(id);
     pickCard.hidden = store.devices.length === 0;
     noDevices.hidden = store.devices.length > 0;
+    view.customer = customer.update(store.devices.map((d) => d.customer), view.customer);
     const q = view.search.trim().toLowerCase();
     const devices = store.devices
+      .filter((d) => matchCustomer(d.customer, view.customer))
       .filter((d) => !q || [d.customer, d.mgmt_ip, d.vendor, d.model, d.serial, d.hostname].some((v) => v && v.toLowerCase().includes(q)))
       .sort((a, b) => (a.customer || '').localeCompare(b.customer || '', 'zh-CN') || (a.mgmt_ip || '').localeCompare(b.mgmt_ip || '', 'zh-CN', { numeric: true }));
     pickable = devices.filter((d) => !support(d).blocked && !collecting.has(d.id) && d.mgmt_ip);
@@ -232,10 +235,10 @@ export function mount(root) {
         title: disabled ? (busy ? '正在收集' : !d.mgmt_ip ? '没有填写管理口 IP' : s.reason) : null,
       },
       h('td', { class: 'cell-check' }, h('input', { type: 'checkbox', checked: sel, disabled, 'aria-label': `选择 ${deviceLabel(d)}` })),
-      h('td', { text: d.customer || '' }),
       h('td', { text: d.mgmt_ip || '' }),
       h('td', { text: d.vendor || '' }),
       h('td', { text: d.model || '' }),
+      h('td', { text: d.serial || '' }),
       h('td', { class: account === '未填' || account.includes('未填') ? 'text-danger' : '', text: account }),
       h('td', {}, tag(st.text, st.tone)),
       h('td', {}, busy ? tag('收集中', 'blue') : tag(s.text, s.tone, s.reason || null)),

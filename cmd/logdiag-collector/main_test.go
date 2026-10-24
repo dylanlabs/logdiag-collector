@@ -39,9 +39,55 @@ func TestVersionAndHelp(t *testing.T) {
 }
 
 func TestUIRejectsLANAddress(t *testing.T) {
-	code, _, errOut := runCmd(t, "ui", "--no-open", "--addr", "0.0.0.0:0")
+	dir := t.TempDir()
+	code, _, errOut := runCmd(t, "ui", "--no-open", "--data", dir, "--addr", "0.0.0.0:0")
 	if code != 1 || !strings.Contains(errOut, "回环地址") {
 		t.Errorf("code=%d err=%q", code, errOut)
+	}
+	if log, _ := os.ReadFile(filepath.Join(dir, logName)); !strings.Contains(string(log), "回环地址") {
+		t.Errorf("启动失败应写进运行日志：%q", log)
+	}
+}
+
+func TestConsoleNeed(t *testing.T) {
+	for _, c := range []struct {
+		args string
+		want consoleNeed
+	}{
+		{"", consoleNone},
+		{"ui", consoleNone},
+		{"-v", consoleNone},
+		{"ui --data D:\\x", consoleNone},
+		{"ui --no-open", consoleOutput},
+		{"-no-open=true", consoleOutput},
+		{"ui -h", consoleOutput},
+		{"--help", consoleOutput},
+		{"version", consoleOutput},
+		{"bogus", consoleOutput},
+		{"probe --host 10.0.0.1", consoleInteractive},
+		{"collect -h", consoleInteractive},
+	} {
+		if got := consoleNeedOf(strings.Fields(c.args)); got != c.want {
+			t.Errorf("%q: %d，应为 %d", c.args, got, c.want)
+		}
+	}
+}
+
+func TestLogRotation(t *testing.T) {
+	dir := t.TempDir()
+	big := bytes.Repeat([]byte("x"), maxLogSize+1)
+	if err := os.WriteFile(filepath.Join(dir, logName), big, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var errb bytes.Buffer
+	w, closeLog := openLog(dir, &errb)
+	io.WriteString(w, "新的一行\n")
+	closeLog()
+	if st, err := os.Stat(filepath.Join(dir, oldLogName)); err != nil || st.Size() != int64(len(big)) {
+		t.Errorf("超过 1 MB 的日志应改名保留：%v", err)
+	}
+	if cur, _ := os.ReadFile(filepath.Join(dir, logName)); string(cur) != "新的一行\n" || errb.String() != "新的一行\n" {
+		t.Errorf("新日志 %q，标准错误 %q", cur, errb.String())
 	}
 }
 

@@ -51,7 +51,9 @@ type Server struct {
 	session string // Cookie 值
 
 	mu          sync.Mutex
-	token       string // 一次性启动令牌，用过后清空
+	first       string          // 第一个窗口用的启动令牌
+	tokens      map[string]bool // 还没用过的一次性启动令牌
+	instanceKey string          // 再次启动的程序请求开新窗口时用的密钥，见 instance.go
 	clients     int
 	idleTimer   *time.Timer
 	idleOnce    sync.Once
@@ -84,13 +86,15 @@ func New(opts Options) (*Server, error) {
 	}
 	_, port, _ := net.SplitHostPort(ln.Addr().String())
 
+	first := randomHex(32)
 	s := &Server{
 		opts:     opts,
 		ln:       ln,
 		port:     port,
 		cookie:   "ldc_" + port,
 		session:  randomHex(32),
-		token:    randomHex(32),
+		first:    first,
+		tokens:   map[string]bool{first: true},
 		idle:     make(chan struct{}),
 		stopping: make(chan struct{}),
 		mux:      http.NewServeMux(),
@@ -122,9 +126,26 @@ func (s *Server) URL() string {
 
 // LaunchURL 返回带一次性令牌的地址，用于打开第一个窗口。
 func (s *Server) LaunchURL() string {
+	return s.URL() + "?token=" + s.first
+}
+
+// reopen 为再开一个窗口准备新的一次性令牌。程序正在退出时返回 false。
+func (s *Server) reopen() (string, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.URL() + "?token=" + s.token
+	select {
+	case <-s.idle:
+		return "", false
+	default:
+	}
+	// 新窗口连上之前不要因为“窗口都关了”而退出：重新计时。
+	if s.clients == 0 && s.idleTimer != nil {
+		s.idleTimer.Stop()
+		s.idleTimer = time.AfterFunc(s.opts.IdleExit, s.checkIdle)
+	}
+	t := randomHex(32)
+	s.tokens[t] = true
+	return s.URL() + "?token=" + t, true
 }
 
 // Run 处理请求，直到 ctx 结束或界面关闭超过 IdleExit。
@@ -160,6 +181,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
+	if r.URL.Path == instancePath {
+		s.handleInstance(w, r)
+		return
+	}
 	if r.URL.Path == "/" && r.URL.Query().Has("token") {
 		s.exchangeToken(w, r)
 		return
@@ -187,9 +212,12 @@ func (s *Server) allowedHost(hostport string) bool {
 func (s *Server) exchangeToken(w http.ResponseWriter, r *http.Request) {
 	given := r.URL.Query().Get("token")
 	s.mu.Lock()
-	ok := s.token != "" && subtle.ConstantTimeCompare([]byte(given), []byte(s.token)) == 1
-	if ok {
-		s.token = "" // 只能用一次：别的进程从命令行参数里看到也没用
+	ok := false
+	for t := range s.tokens {
+		if subtle.ConstantTimeCompare([]byte(given), []byte(t)) == 1 {
+			ok = true
+			delete(s.tokens, t) // 只能用一次：别的进程从命令行参数里看到也没用
+		}
 	}
 	s.mu.Unlock()
 	if !ok {
@@ -285,7 +313,7 @@ func (s *Server) checkIdle() {
 		// 窗口关了但收集还没完：等任务结束再退出，期间重新打开界面也能看到进度。
 		if !s.waitingBusy {
 			s.waitingBusy = true
-			s.opts.Logger.Info("界面已关闭，还有收集任务在进行，完成后自动退出；按 Ctrl+C 可立即退出（会取消任务）")
+			s.opts.Logger.Info("界面已关闭，还有收集任务在进行，完成后自动退出；期间再次运行程序会重新打开界面")
 		}
 		s.idleTimer = time.AfterFunc(5*time.Second, s.checkIdle)
 		return

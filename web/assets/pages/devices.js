@@ -4,22 +4,22 @@
 
 import {
   h, icon, button, tag, notice, api, bus, dialog, confirm, toast, showError, download, fmtTime,
-  field, input, select, checkbox, withList, frame, empty, pageHead, menuButton, keyedRows, setChildren,
+  field, optional, input, select, checkbox, withList, frame, empty, pageHead, menuButton, keyedRows, setChildren,
+  customerFilter, matchCustomer,
 } from '../lib.js';
-import { store, loadDevices, collectingIDs, credentialName, deviceStatus, deviceTypes, deviceLabel } from '../store.js';
+import {
+  store, loadDevices, collectingIDs, credentialName, deviceStatus, typeChoices, deviceLabel, brands, brandOf,
+} from '../store.js';
 import { startCollect, showSkipped, openPath } from '../actions.js';
 
 // 切换页面后保留搜索词、筛选、排序和选中的设备。
-const view = { search: '', customer: '', sort: 'customer', dir: 1, selected: new Set(), anchor: -1 };
-const NO_CUSTOMER = '\x00';
-
-const vendors = ['华为', '超聚变', '浪潮', '联想', 'Dell', 'HPE', '新华三', 'IBM'];
+const view = { search: '', customer: '', sort: 'mgmt_ip', dir: 1, selected: new Set(), anchor: -1 };
 
 // 按连通状态排序时，有问题的排前面。
 const statusRank = { 认证失败: 0, 识别失败: 1, 不可达: 2, 网络可达: 3, 服务可用: 4, 登录成功: 5, 收集中: 6 };
 
+// 客户名称不单独占一列，用工具栏的客户筛选。
 const columns = [
-  { key: 'customer', title: '客户名称' },
   { key: 'vendor', title: '品牌' },
   { key: 'model', title: '型号' },
   { key: 'serial', title: '序列号' },
@@ -85,14 +85,14 @@ function visibleDevices() {
   const q = view.search.trim().toLowerCase();
   const collecting = collectingIDs();
   const list = store.devices.filter((d) => {
-    if (view.customer && (d.customer || NO_CUSTOMER) !== view.customer) return false;
+    if (!matchCustomer(d.customer, view.customer)) return false;
     if (!q) return true;
     return [d.customer, d.vendor, d.model, d.serial, d.hostname, d.host_ip, d.os, d.mgmt_ip, d.user,
       d.location, d.notes, d.firmware, credentialName(d.credential_id)].some((v) => v && v.toLowerCase().includes(q));
   });
-  const col = columns.find((c) => c.key === view.sort) || columns[0];
-  const byCustomer = columns[0];
   const byIP = columns.find((c) => c.key === 'mgmt_ip');
+  const col = columns.find((c) => c.key === view.sort) || byIP;
+  const byCustomer = { key: 'customer' }; // 同一列的值相同时，同一客户的设备排在一起
   list.sort((a, b) => {
     const va = sortValue(col, a, collecting);
     const vb = sortValue(col, b, collecting);
@@ -117,7 +117,7 @@ export function mount(root) {
     type: 'search', placeholder: '搜索 IP、型号、序列号、客户…', value: view.search, 'aria-label': '搜索设备',
     oninput: () => { view.search = search.value; render(); },
   });
-  const customer = h('select', { class: 'input', 'aria-label': '按客户筛选', onchange: () => { view.customer = customer.value; render(); } });
+  const customer = customerFilter((v) => { view.customer = v; render(); });
   const selInfo = h('span', { class: 'selection-info' });
   const act = (fn) => async () => {
     const ids = selectedIDs();
@@ -151,7 +151,7 @@ export function mount(root) {
   const foot = h('div', { class: 'table-foot' });
   const tableCard = h('section', { class: 'card card-flush' },
     h('div', { class: 'toolbar' },
-      h('div', { class: 'search' }, icon('search'), search), customer,
+      h('div', { class: 'search' }, icon('search'), search), customer.el,
       h('div', { class: 'spacer' }), selInfo, btnCheck, btnIdentify, btnMore, btnCollect),
     h('div', { class: 'table-wrap' }, h('table', { class: 'grid' }, thead, tbody)),
     foot);
@@ -213,11 +213,7 @@ export function mount(root) {
     emptyCard.hidden = hasDevices;
     if (!hasDevices) return;
 
-    // 客户筛选
-    const names = [...new Set(store.devices.map((d) => d.customer || NO_CUSTOMER))].sort((a, b) => collator.compare(a, b));
-    if (view.customer && !names.includes(view.customer)) view.customer = '';
-    customer.replaceChildren(h('option', { value: '', text: '全部客户' }),
-      ...names.map((n) => h('option', { value: n, selected: n === view.customer, text: n === NO_CUSTOMER ? '（未填客户）' : n })));
+    view.customer = customer.update(store.devices.map((d) => d.customer), view.customer);
 
     const ids = new Set(store.devices.map((d) => d.id));
     for (const id of view.selected) if (!ids.has(id)) view.selected.delete(id);
@@ -298,47 +294,69 @@ function selectNew(ids) {
   loadDevices();
 }
 
-// ---------- 账号一节（添加、编辑、批量添加、批量设置共用） ----------
+// ---------- 账号、品牌（添加、编辑、批量添加、批量设置共用） ----------
 
 let radioSeq = 0;
 
-// accountSection 是“管理口账号”一节：手动填写账号密码，或者选凭据模板。keep 为 true 时多一个“不修改”。
-function accountSection({ device, keep = false }) {
+// accountFields 是管理口账号：用户名、密码两格，或者用凭据模板代替。keep 为 true 时（批量设置）多一个“不修改”。
+// fields 放进表单和管理口 IP 同一排；options 是下面一排的“使用凭据模板”等选项。
+function accountFields({ device, keep = false }) {
   const d = device || {};
   const creds = store.credentials;
   let mode = keep ? 'keep' : d.credential_id ? 'template' : 'manual';
-  const name = `account-${++radioSeq}`;
   const user = input({ value: d.user || '', placeholder: '例如 Administrator', maxlength: 100 });
   const password = input({
     type: 'password', autocomplete: 'new-password', maxlength: 256,
-    placeholder: d.has_password ? '已保存，留空表示不修改' : keep ? '留空表示不修改密码' : '',
+    placeholder: d.has_password ? '已保存，留空表示不修改' : keep ? '留空表示不修改' : '',
   });
-  const clear = d.has_password ? checkbox('清除已保存的密码', false) : null;
   const cred = select(creds.map((c) => [c.id, `${c.name}（${c.user}）`]), d.credential_id || creds[0]?.id || '');
-  const manual = h('div', { class: 'form' }, field('用户名', user), field('密码', password), clear && h('div', { class: 'span-2' }, clear));
-  const template = h('div', { class: 'form' },
-    field('凭据模板', cred, '改模板里的账号密码，用这个模板的设备都会跟着改。', 'span-2'));
-  const modes = [keep && ['keep', '不修改'], ['manual', '手动填写'], ['template', '使用凭据模板']].filter(Boolean);
-  const radios = h('div', { class: 'radio-row' },
-    modes.map(([v, text]) => h('label', { class: 'check' },
-      h('input', {
-        type: 'radio', name, value: v, checked: v === mode, disabled: v === 'template' && !creds.length,
-        onchange: () => { mode = v; sync(); },
+  const userField = field('用户名', user);
+  const passField = field('密码', password);
+  const credField = field('凭据模板', cred, '改模板里的账号密码，用这个模板的设备都会跟着改。', 'cols-2');
+  const clear = d.has_password ? checkbox('清除已保存的密码', false) : null;
+  const noTemplates = !creds.length && h('span', { class: 'faint', text: '还没有凭据模板，可以在“凭据模板”里新建' });
+  let options;
+  if (keep) {
+    const name = `account-${++radioSeq}`;
+    options = h('div', { class: 'radio-row span-2' },
+      h('span', { class: 'field-label', text: '管理口账号' }),
+      [['keep', '不修改'], ['manual', '改为手动填写'], ['template', '改用凭据模板']].map(([v, text]) => h('label', { class: 'check' },
+        h('input', {
+          type: 'radio', name, value: v, checked: v === mode, disabled: v === 'template' && !creds.length,
+          onchange: () => { mode = v; sync(); },
+        }),
+        h('span', { text }))),
+      noTemplates);
+  } else {
+    options = h('div', { class: 'radio-row span-2' },
+      checkbox('使用凭据模板', mode === 'template', {
+        disabled: !creds.length,
+        onchange: (e) => { mode = e.target.checked ? 'template' : 'manual'; sync(); },
       }),
-      h('span', { text }))),
-    !creds.length && h('span', { class: 'faint', text: '还没有凭据模板，可在“凭据模板”里新建' }));
+      noTemplates, clear);
+  }
   function sync() {
-    manual.hidden = mode !== 'manual';
-    template.hidden = mode !== 'template';
+    userField.hidden = mode === 'template';
+    passField.hidden = mode === 'template';
+    credField.hidden = mode !== 'template';
+    user.disabled = password.disabled = mode === 'keep';
+    if (clear) clear.hidden = mode !== 'manual';
   }
   sync();
   return {
-    el: [h('div', { class: 'form-section', text: '管理口账号' }), h('div', { class: 'span-2 stack' }, radios, manual, template)],
+    fields: [userField, passField, credField],
+    options,
+    // check 检查必填项：手动填写时要有用户名和密码（编辑时密码已保存就不用再填）。
+    check() {
+      if (mode !== 'manual') return;
+      if (!user.value.trim()) throw new Error('请填写用户名');
+      if (!password.value && !d.has_password && !keep) throw new Error('请填写密码');
+    },
     patch(p) {
       if (mode === 'template') p.credential_id = cred.value;
       else if (mode === 'manual') {
         p.credential_id = '';
-        if (!keep || user.value.trim()) p.user = user.value.trim();
+        p.user = user.value.trim();
         if (password.value) p.password = password.value;
         else if (clear?.querySelector('input').checked) p.password = '';
       }
@@ -347,49 +365,74 @@ function accountSection({ device, keep = false }) {
   };
 }
 
+const AUTO = '';
+const KEEP = '\x00keep';
+
+// brandSelect 是品牌下拉框，默认“自动识别”。收集时会自动判断品牌和系列，一般不用选；
+// 只有关闭了 Redfish 的浪潮设备要选“浪潮”。value() 在用户没改动时返回设备表里原来的写法。
+function brandSelect(current, { keep = false } = {}) {
+  const known = brandOf(current);
+  const options = [
+    ...(keep ? [[KEEP, '不修改']] : []),
+    [AUTO, keep ? '改为自动识别' : '自动识别（推荐）'],
+    ...brands.map((b) => [b.vendor, b.status === 'supported' ? b.name : `${b.name}（收集计划 ${b.status}）`]),
+  ];
+  // 认不出的写法（例如识别到的其他厂商）单独列出来，保存时原样保留。
+  if (current && !known) options.push([current, current]);
+  const initial = keep ? KEEP : known ? known.vendor : current || AUTO;
+  const el = select(options, initial);
+  return {
+    el,
+    value: () => (el.value === initial && !keep ? current || '' : el.value),
+    changed: () => el.value !== KEEP,
+  };
+}
+
 // ---------- 添加、编辑单台设备 ----------
 
 function editDialog(dev) {
   const d = dev || {};
   const f = {
-    customer: input({ value: d.customer || '', maxlength: 100 }),
-    type: select(deviceTypes, d.type || 'server'),
     mgmt_ip: input({ value: d.mgmt_ip || '', placeholder: '例如 10.0.0.10' }),
-    vendor: input({ value: d.vendor || '', placeholder: '可留空，识别后自动填写', maxlength: 100 }),
+    customer: input({ value: d.customer || '', maxlength: 100 }),
+    type: select(typeChoices, d.type || 'server'),
     model: input({ value: d.model || '', maxlength: 100 }),
     serial: input({ value: d.serial || '', maxlength: 100 }),
-    hostname: input({ value: d.hostname || '', maxlength: 100 }),
-    host_ip: input({ value: d.host_ip || '', placeholder: 'OS 巡检用，可留空' }),
-    os: input({ value: d.os || '', placeholder: '例如 CentOS 7.9', maxlength: 100 }),
     location: input({ value: d.location || '', placeholder: '机房、机柜、U 位', maxlength: 100 }),
+    hostname: input({ value: d.hostname || '', maxlength: 100 }),
+    host_ip: input({ value: d.host_ip || '', placeholder: 'OS 巡检用' }),
+    os: input({ value: d.os || '', placeholder: '例如 CentOS 7.9', maxlength: 100 }),
     notes: h('textarea', { class: 'input', rows: 2, value: d.notes || '', maxlength: 2000 }),
   };
+  const brand = brandSelect(d.vendor);
   const legacy = checkbox('允许旧版 TLS', !!d.legacy_tls);
-  const account = accountSection({ device: dev });
+  legacy.title = '只在老设备提示“TLS 握手失败”连不上时勾选';
+  const account = accountFields({ device: dev });
+  account.options.append(legacy);
   const status = dev ? statusSection(dev) : null;
 
-  const form = h('div', { class: 'form' },
-    field('客户名称', withList(f.customer, store.customers)),
-    field('设备类型', f.type),
+  // 必填的管理口 IP、用户名、密码排第一排；其余都可以不填，品牌、型号等会在识别或收集时自动判断并回填。
+  const form = h('div', { class: 'form form-3' },
     field('管理口 IP', f.mgmt_ip, '可以带端口，例如 10.0.0.10:8443'),
-    field('品牌', withList(f.vendor, vendors)),
-    ...account.el,
-    h('div', { class: 'form-section', text: '设备信息' }),
-    field('型号', f.model), field('序列号', f.serial),
-    field('主机名', f.hostname), field('主机 IP', f.host_ip),
-    field('系统', f.os), field('位置', f.location),
-    field('备注', f.notes, null, 'span-2'),
-    h('div', { class: 'span-2' }, legacy,
-      h('div', { class: 'field-hint', text: '只在老设备提示“TLS 握手失败”连不上时勾选。' })));
+    ...account.fields,
+    account.options,
+    field('设备类型', f.type),
+    field(optional('品牌'), brand.el, '收集时自动判断品牌和系列，一般不用选'),
+    field(optional('客户名称'), withList(f.customer, store.customers)),
+    h('div', { class: 'form-section' }, '设备信息', h('span', { class: 'form-section-hint', text: '识别型号或收集后自动填写' })),
+    field(optional('型号'), f.model), field(optional('序列号'), f.serial), field(optional('位置'), f.location),
+    field(optional('主机名'), f.hostname), field(optional('主机 IP'), f.host_ip), field(optional('系统'), f.os),
+    field(optional('备注'), f.notes, null, 'span-2'));
 
   const actions = [{ text: '取消' }, {
     text: dev ? '保存' : '添加',
     kind: 'primary',
     onclick: async () => {
-      const p = { legacy_tls: legacy.querySelector('input').checked };
+      const p = { legacy_tls: legacy.querySelector('input').checked, vendor: brand.value() };
       for (const [k, el] of Object.entries(f)) p[k] = el.value.trim();
+      if (!p.mgmt_ip) throw new Error('请填写管理口 IP');
+      if (!dev) account.check();
       account.patch(p);
-      if (!p.mgmt_ip && !p.host_ip) throw new Error('请填写管理口 IP');
       if (dev) {
         await api.post('/api/devices/update', { ids: [dev.id], patch: p });
         toast('已保存', 'ok');
@@ -432,28 +475,30 @@ function statusSection(d) {
 
 function batchAddDialog() {
   const addresses = h('textarea', {
-    class: 'input', rows: 6, spellcheck: 'false',
+    class: 'input', rows: 5, spellcheck: 'false',
     placeholder: '每行一个，也可以用逗号分隔，例如：\n10.0.0.10\n10.0.0.11-20\n10.0.1.0/24',
   });
   const customer = input({ maxlength: 100 });
-  const type = select(deviceTypes, 'server');
-  const vendor = input({ placeholder: '可留空，识别后自动填写', maxlength: 100 });
-  const account = accountSection({});
+  const type = select(typeChoices, 'server');
+  const brand = brandSelect('');
+  const account = accountFields({});
   dialog({
     title: '批量添加设备',
     wide: true,
-    body: h('div', { class: 'form' },
+    body: h('div', { class: 'form form-3' },
       field('管理口 IP', addresses, '支持单个地址、范围（10.0.0.11-20）和网段（/22 到 /32），一次最多 1024 个；客户下已有的地址会跳过。', 'span-2'),
-      field('客户名称', withList(customer, store.customers)),
+      ...account.fields,
+      h('div', { class: 'field-note' }, '这批设备用同一个账号；账号不同的请用“导入”。'),
+      account.options,
       field('设备类型', type),
-      field('品牌', withList(vendor, vendors)),
-      h('div'),
-      ...account.el),
+      field(optional('品牌'), brand.el, '收集时自动判断品牌和系列，一般不用选'),
+      field(optional('客户名称'), withList(customer, store.customers))),
     actions: [{ text: '取消' }, {
       text: '添加', kind: 'primary', icon: 'plus',
       onclick: async () => {
         if (!addresses.value.trim()) throw new Error('请填写管理口 IP');
-        const patch = account.patch({ customer: customer.value.trim(), type: type.value, vendor: vendor.value.trim() });
+        account.check();
+        const patch = account.patch({ customer: customer.value.trim(), type: type.value, vendor: brand.value() });
         const res = await api.post('/api/devices/batch', { addresses: addresses.value, patch });
         toast(`已添加 ${res.added} 台设备${res.skipped ? `，${res.skipped} 个地址已存在、已跳过` : ''}`, 'ok');
         selectNew(res.ids);
@@ -468,35 +513,39 @@ function batchAddDialog() {
 function batchEditDialog(ids) {
   const keep = '不修改';
   const customer = input({ placeholder: keep, maxlength: 100 });
-  const type = select([['', keep], ...deviceTypes], '');
-  const vendor = input({ placeholder: keep, maxlength: 100 });
+  const type = select([['', keep], ...typeChoices], '');
+  const brand = brandSelect('', { keep: true });
   const os = input({ placeholder: keep, maxlength: 100 });
   const location = input({ placeholder: keep, maxlength: 100 });
   const tls = select([['', keep], ['on', '允许'], ['off', '不允许']], '');
-  const account = accountSection({ keep: true });
+  const account = accountFields({ keep: true });
   dialog({
     title: `批量设置 ${ids.length} 台设备`,
     wide: true,
     body: [
       h('p', { class: 'dialog-text muted', text: '只修改填写了的项，留空的保持原样。' }),
-      h('div', { class: 'form' },
-        field('客户名称', withList(customer, store.customers)),
+      h('div', { class: 'form form-3' },
+        account.options,
+        ...account.fields,
+        h('div'),
         field('设备类型', type),
-        field('品牌', withList(vendor, vendors)),
+        field('品牌', brand.el),
+        field('客户名称', withList(customer, store.customers)),
         field('系统', os),
         field('位置', location),
-        field('允许旧版 TLS', tls),
-        ...account.el),
+        field('允许旧版 TLS', tls)),
     ],
     actions: [{ text: '取消' }, {
       text: '保存', kind: 'primary',
       onclick: async () => {
         const p = {};
-        for (const [k, el] of Object.entries({ customer, vendor, os, location })) {
+        for (const [k, el] of Object.entries({ customer, os, location })) {
           if (el.value.trim()) p[k] = el.value.trim();
         }
         if (type.value) p.type = type.value;
+        if (brand.changed()) p.vendor = brand.value();
         if (tls.value) p.legacy_tls = tls.value === 'on';
+        account.check();
         account.patch(p);
         if (!Object.keys(p).length) throw new Error('没有要修改的项');
         await api.post('/api/devices/update', { ids, patch: p });
@@ -594,7 +643,30 @@ function previewDialog(res, source) {
     if (r.duplicate) return tag('已存在，跳过', 'gray');
     return tag('可导入', 'green');
   };
-  const rows = p.rows.slice(0, MAX_PREVIEW);
+  // 客户名称不单独占一列，表格里写了客户时可以按客户筛选。
+  const rowBody = h('tbody');
+  let filterBy = '';
+  const filter = customerFilter((v) => { filterBy = v; renderRows(); });
+  const tableCustomers = p.rows.map((r) => r.device.customer);
+  filter.update(tableCustomers, '');
+  const shownInfo = h('span', { class: 'muted' });
+  function renderRows() {
+    const matched = p.rows.filter((r) => matchCustomer(r.device.customer, filterBy));
+    const rows = matched.slice(0, MAX_PREVIEW);
+    rowBody.replaceChildren(...(rows.length ? rows.map((r) => h('tr', {},
+      h('td', { class: 'faint', text: r.line }),
+      h('td', { text: r.device.mgmt_ip || '' }),
+      h('td', { text: r.device.host_ip || '' }),
+      h('td', { text: r.device.vendor || '' }),
+      h('td', { text: r.device.model || '' }),
+      h('td', { text: r.device.serial || '' }),
+      h('td', { text: accountOf(r) }),
+      h('td', {}, result(r)))) : [h('tr', {}, h('td', { class: 'cell-empty', colspan: 8, text: '没有这个客户的设备' }))]));
+    shownInfo.textContent = matched.length > MAX_PREVIEW
+      ? `只显示前 ${MAX_PREVIEW} 行，共 ${matched.length} 行`
+      : filterBy ? `显示 ${matched.length} 行，共 ${p.rows.length} 行` : `共 ${p.rows.length} 行`;
+  }
+  renderRows();
 
   dialog({
     title: '确认导入',
@@ -607,20 +679,12 @@ function previewDialog(res, source) {
       ...(p.warnings || []).map((w) => notice('warn', h('p', { text: w }))),
       h('div', { class: 'stats' },
         stat(res.ready, '台可导入'), stat(dup, '台已存在（跳过）'), stat(bad, '行有问题（跳过）')),
+      h('div', { class: 'toolbar' },
+        tableCustomers.some(Boolean) && filter.el, shownInfo),
       h('div', { class: 'table-wrap short bordered' },
         h('table', { class: 'grid' },
-          h('thead', {}, h('tr', {}, ['行', '客户名称', '管理口 IP', '主机 IP', '品牌', '型号', '序列号', '账号', '结果'].map((t) => h('th', { text: t })))),
-          h('tbody', {}, rows.map((r) => h('tr', {},
-            h('td', { class: 'faint', text: r.line }),
-            h('td', { text: r.device.customer || '' }),
-            h('td', { text: r.device.mgmt_ip || '' }),
-            h('td', { text: r.device.host_ip || '' }),
-            h('td', { text: r.device.vendor || '' }),
-            h('td', { text: r.device.model || '' }),
-            h('td', { text: r.device.serial || '' }),
-            h('td', { text: accountOf(r) }),
-            h('td', {}, result(r))))))),
-      p.rows.length > MAX_PREVIEW && h('p', { class: 'dialog-text muted', text: `只显示前 ${MAX_PREVIEW} 行，共 ${p.rows.length} 行。` }),
+          h('thead', {}, h('tr', {}, ['行', '管理口 IP', '主机 IP', '品牌', '型号', '序列号', '账号', '结果'].map((t) => h('th', { text: t })))),
+          rowBody)),
       h('div', { class: 'form' },
         field('默认客户名称', withList(customer, store.customers), '只用于表格里没写客户的设备。'),
         field('默认凭据模板', cred, needAccount

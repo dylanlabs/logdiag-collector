@@ -83,17 +83,24 @@ export function credentialName(id) {
 
 // ---------- 品牌与支持情况 ----------
 
-// roadmap 是设计文档里各品牌一键收集的计划版本。key 是匹配设备表品牌写法的关键词（小写）。
-const roadmap = [
-  { keys: ['xfusion', '超聚变'], name: '超聚变', status: 'supported' },
-  { keys: ['huawei', '华为'], name: '华为', status: 'supported' },
-  { keys: ['inspur', '浪潮', 'ieit'], name: '浪潮', status: 'supported' },
-  { keys: ['lenovo', '联想'], name: '联想', status: 'v0.1' },
-  { keys: ['dell', '戴尔'], name: 'Dell', status: 'v0.1' },
-  { keys: ['hpe', 'hewlett', '慧与', '惠普'], name: 'HPE', status: 'v0.1' },
-  { keys: ['h3c', '新华三', '华三'], name: '新华三', status: 'v0.2' },
-  { keys: ['ibm'], name: 'IBM', status: 'v0.2' },
+// brands 是设计文档里各品牌一键收集的计划版本，顺序即品牌下拉框的顺序。
+// keys 是匹配设备表品牌写法的关键词（小写），vendor 是下拉框选中时写进设备表的写法（与识别结果一致）。
+export const brands = [
+  { keys: ['huawei', '华为'], name: '华为', vendor: 'Huawei', status: 'supported' },
+  { keys: ['xfusion', '超聚变'], name: '超聚变', vendor: 'xFusion', status: 'supported' },
+  { keys: ['inspur', '浪潮', 'ieit'], name: '浪潮', vendor: 'Inspur', status: 'supported' },
+  { keys: ['lenovo', '联想'], name: '联想', vendor: 'Lenovo', status: 'v0.1' },
+  { keys: ['dell', '戴尔'], name: 'Dell', vendor: 'Dell', status: 'v0.1' },
+  { keys: ['hpe', 'hewlett', '慧与', '惠普'], name: 'HPE', vendor: 'HPE', status: 'v0.1' },
+  { keys: ['h3c', '新华三', '华三'], name: '新华三', vendor: 'H3C', status: 'v0.2' },
+  { keys: ['ibm'], name: 'IBM', vendor: 'IBM', status: 'v0.2' },
 ];
+
+// brandOf 把设备表里的品牌写法对应到 brands 里的一项，认不出时为 undefined。
+export function brandOf(vendor) {
+  const v = (vendor || '').toLowerCase();
+  return v ? brands.find((b) => b.keys.some((k) => v.includes(k))) : undefined;
+}
 
 // support 返回设备的一键收集支持情况：
 // { status: 'supported'|'auto'|'v0.1'|'v0.2'|'1.0'|'none', text（表格里的短说明）, reason（不能收集时的原因）, tone, blocked }。
@@ -106,9 +113,8 @@ export function support(device) {
       reason: v ? `${name}的日志收集计划在 ${v} 支持` : '目前只支持服务器的一键收集',
     };
   }
-  const v = (device.vendor || '').toLowerCase();
-  if (!v) return { status: 'auto', text: '收集时识别', tone: 'gray', blocked: false };
-  const hit = roadmap.find((r) => r.keys.some((k) => v.includes(k)));
+  if (!device.vendor) return { status: 'auto', text: '收集时识别', tone: 'gray', blocked: false };
+  const hit = brandOf(device.vendor);
   if (hit?.status === 'supported') return { status: 'supported', text: '支持', tone: 'green', blocked: false };
   if (hit) {
     return { status: hit.status, text: `计划 ${hit.status}`, tone: 'blue', blocked: true, reason: `${hit.name}的一键收集计划在 ${hit.status} 支持` };
@@ -148,6 +154,9 @@ export const logTypes = {
 
 export const deviceTypes = [['server', '服务器'], ['storage', '存储'], ['network', '网络'], ['other', '其他']];
 export const typeName = Object.fromEntries(deviceTypes);
+
+// typeChoices 是设备类型下拉框：写明还没支持收集的类型计划在哪个版本支持。
+export const typeChoices = [['server', '服务器'], ['storage', '存储（收集计划 v0.2）'], ['network', '网络（收集计划 1.0）'], ['other', '其他（暂不支持收集）']];
 
 // deviceLabel 是提示里用的设备名称：客户 + 地址。
 export function deviceLabel(d) {
