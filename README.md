@@ -2,7 +2,7 @@
 
 面向数据中心运维和服务工程师的免费开源工具：管理设备的管理口信息，一键收集服务器 BMC、存储、网络设备的日志包，再交给 [LogDiag](https://logdiag.com) 分析。
 
-> **状态：开发中，尚未发布可用版本。** 已能对华为、超聚变、浪潮服务器一键收集日志包（等待真机验证）。界面的设备列表、日志收集、收集结果、设置四页可用，健康与告警、OS 巡检只有页面布局。
+> **状态：开发中，尚未发布可用版本。** 已能对华为、超聚变、浪潮服务器一键收集日志包（等待真机验证）；Linux 服务器的 OS 巡检已能通过命令行完成（界面接入中）。界面的设备列表、日志收集、收集结果、设置四页可用，健康与告警、OS 巡检页面接入中。
 
 ## 计划支持的设备
 
@@ -73,6 +73,7 @@ gh attestation verify LogDiagCollector.exe --repo dylanlabs/logdiag-collector
 LogDiagCollector.exe                       启动界面
 LogDiagCollector.exe probe --host 10.0.0.10 --user admin --record probe.json
 LogDiagCollector.exe collect --host 10.0.0.10 --user admin --record collect.json
+LogDiagCollector.exe inspect --host 10.0.0.10 --user root  --record inspect.json
 LogDiagCollector.exe version               显示版本
 LogDiagCollector.exe help                  查看全部命令
 ```
@@ -99,6 +100,14 @@ LogDiagCollector.exe help                  查看全部命令
 ```
 
 已知限制：浪潮部分新固件要求网页登录时对账号密码加密，目前还不支持，这类设备会显示“认证失败”。
+
+`inspect` 对一台服务器的操作系统做巡检：通过 SSH 上传 LogDiag 的巡检脚本（和网站「OS 巡检」页提供下载的是同一份，内置进 exe，`--show-script` 可查看并核对 SHA-256），以 root 或 `sudo` 运行，取回结果压缩包，旁边同样写 `manifest.json`（`device.type` 为 `os`，`log.type` 为 `logdiag.linux.pm`）。脚本只做读取类收集，不改系统配置、不清日志、不重启。结束、失败或取消时都会删掉上传的脚本和设备上的临时文件。
+
+| 系统 | 结果 | 方式 |
+| --- | --- | --- |
+| Linux（RHEL/CentOS/Rocky/Alma/Ubuntu/Debian/SLES/openEuler/麒麟/统信等） | `<主机名>.<序列号>.pm-<时间>.tar.gz` | SSH，root 或 sudo 运行脚本 |
+
+用 `--user root` 直接以 root 登录；非 root 账号加 `--sudo`（默认开），需要该账号有 sudo 权限（如果 sudo 配了 `requiretty` 则暂不支持）。可以用 `--key` 指定私钥登录（不能带口令），或用密码。首次连接会显示并记录 SSH 主机密钥指纹，下次用 `--host-key SHA256:…` 传入即可核对设备是否被冒充；指纹不符会停下并提示。认证失败立即停止、不重试，避免账号被锁。VMware ESXi、AIX、Solaris、HP-UX、Windows 的脚本等有对应测试环境后再支持。
 
 `probe` 和 `collect` 加 `--record` 会把这次的接口往返保存成诊断记录（日志包本身只留开头一小段和 SHA-256）。记录里已自动去掉密码、会话令牌、Cookie 和设备 IP，但仍保留型号、序列号、主机名和其他地址等设备信息，发给别人前请先看一遍。
 
@@ -149,11 +158,13 @@ scripts/build.sh v0.1.0            # 编译带版本资源的 Windows exe 到 di
 ## 目录结构
 
 ```
-cmd/logdiag-collector/   程序入口和子命令（ui、probe、collect、version）
+cmd/logdiag-collector/   程序入口和子命令（ui、probe、collect、inspect、version）
 internal/drivers/        识别设备、选择驱动、执行一次收集
 internal/collect/        驱动公共部分：阶段进度、文件落盘与校验、manifest
 internal/collect/huawei/ 华为、超聚变 iBMC 驱动
 internal/collect/inspur/ 浪潮 M5/M6/M7 驱动
+internal/oscheck/        OS 巡检：SSH 上传脚本、root/sudo 运行、取回结果（内置巡检脚本）
+internal/sshx/           SSH 连接、防锁号认证、主机密钥核对、执行命令与诊断记录
 internal/redfish/        Redfish 会话、请求、任务轮询、文件下载
 internal/httprec/        HTTP 录制与回放（诊断记录和回放测试共用）
 internal/ui/             本机界面服务和接口
