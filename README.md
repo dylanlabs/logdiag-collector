@@ -2,7 +2,7 @@
 
 面向数据中心运维和服务工程师的免费开源工具：管理设备的管理口信息，一键收集服务器 BMC、存储、网络设备的日志包，再交给 [LogDiag](https://logdiag.com) 分析。
 
-> **状态：开发中，尚未发布可用版本。** 已能对华为、超聚变、浪潮服务器一键收集日志包（等待真机验证）；Linux 服务器的 OS 巡检已能通过命令行完成（界面接入中）。界面的设备列表、日志收集、收集结果、设置四页可用，健康与告警、OS 巡检页面接入中。
+> **状态：开发中，尚未发布可用版本。** 已能对华为、超聚变、浪潮服务器一键收集日志包，对思科、华为、新华三网络设备收集诊断信息（都在等真机验证，网络设备目前只用模拟设备测过）；Linux 服务器的 OS 巡检已能通过命令行完成（界面接入中）。界面的设备列表、日志收集、收集结果、设置四页可用，健康与告警、OS 巡检页面接入中。
 
 ## 计划支持的设备
 
@@ -73,12 +73,13 @@ gh attestation verify LogDiagCollector.exe --repo dylanlabs/logdiag-collector
 LogDiagCollector.exe                       启动界面
 LogDiagCollector.exe probe --host 10.0.0.10 --user admin --record probe.json
 LogDiagCollector.exe collect --host 10.0.0.10 --user admin --record collect.json
+LogDiagCollector.exe collect --type network --host 10.0.0.20 --user admin --enable --record net.netrec.json
 LogDiagCollector.exe inspect --host 10.0.0.10 --user root  --record inspect.json
 LogDiagCollector.exe version               显示版本
 LogDiagCollector.exe help                  查看全部命令
 ```
 
-密码会提示输入（不回显），也可以事先放在环境变量 `LOGDIAG_PASSWORD` 里。在 cmd、PowerShell 里运行 `probe`、`collect` 时会另开一个命令行窗口（输入密码、显示进度，结束后按回车关闭）；在脚本或 Git Bash 里运行、或者把输出重定向到文件时，输入输出走原来的窗口。
+密码会提示输入（不回显），也可以事先放在环境变量 `LOGDIAG_PASSWORD` 里（网络设备的 enable 密码是 `LOGDIAG_ENABLE_PASSWORD`）。在 cmd、PowerShell 里运行 `probe`、`collect` 时会另开一个命令行窗口（输入密码、显示进度，结束后按回车关闭）；在脚本或 Git Bash 里运行、或者把输出重定向到文件时，输入输出走原来的窗口。
 
 `probe` 只读探测一台设备的 Redfish 接口：显示 Redfish 版本、型号、序列号、固件版本，以及设备支持的日志动作。它只调用读取类接口，不触发收集、不修改设备。不填 `--user` 时只匿名读取服务根，不登录、不产生审计日志。
 
@@ -108,6 +109,25 @@ LogDiagCollector.exe help                  查看全部命令
 | Linux（RHEL/CentOS/Rocky/Alma/Ubuntu/Debian/SLES/openEuler/麒麟/统信等） | `<主机名>.<序列号>.pm-<时间>.tar.gz` | SSH，root 或 sudo 运行脚本 |
 
 用 `--user root` 直接以 root 登录；非 root 账号加 `--sudo`（默认开），需要该账号有 sudo 权限（如果 sudo 配了 `requiretty` 则暂不支持）。可以用 `--key` 指定私钥登录（不能带口令），或用密码。首次连接会显示并记录 SSH 主机密钥指纹，下次用 `--host-key SHA256:…` 传入即可核对设备是否被冒充；指纹不符会停下并提示。认证失败立即停止、不重试，避免账号被锁。VMware ESXi、AIX、Solaris、HP-UX、Windows 的脚本等有对应测试环境后再支持。
+
+`collect --type network` 通过 SSH 登录交换机、路由器、防火墙，收集诊断信息和日志缓冲区（界面上把设备类型设为“网络”即可）：
+
+| 厂商 | 系统 | 收集的内容 | 日志类型 |
+| --- | --- | --- | --- |
+| 思科 | IOS、IOS XE（Catalyst 等） | `show tech-support`，另附 `show logging` | `cisco.ios.showtech` |
+| 思科 | NX-OS（Nexus） | `show tech-support`，另附 `show logging logfile` | `cisco.nxos.showtech` |
+| 思科 | MDS 9000 | `show tech-support details`，另附 `show logging logfile` | `cisco.mds.showtech` |
+| 思科 | ASA | `show tech-support`，另附 `show logging` | `cisco.asa.showtech` |
+| 华为 | VRP（S、CE 系列交换机等） | `display diagnostic-information`，另附 `display logbuffer`、`display trapbuffer` | `huawei.vrp.diag` |
+| 新华三 | Comware（含 HPE 的 Comware 交换机） | `display diagnostic-information`，另附 `display logbuffer` | `h3c.comware.diag` |
+
+- 登录后按提示符和 `show version` / `display version` 自动识别系统、型号、版本，再用 `show inventory`、`display esn`、`display device manuinfo` 读序列号，不用选品牌。
+- 只执行查看类命令：关闭分页只对本次登录有效，不改配置、不保存、不在设备上生成文件，结束时退出登录。登录后设备问是否修改密码时回答“否”；账号被要求必须先改密码时会停下来提示，不替你改。
+- 思科账号登录后在普通模式（提示符是 `>`）时，要填 enable 密码（命令行加 `--enable`，界面在设备里填）。密码和 enable 密码都只发送一次，错了立即停止。
+- 输出原样保存成文本（每个命令一个 `.txt`），保存前遮盖口令、密钥、SNMP 团体名和设备加密后的密文，`manifest.json` 的 `redaction` 写明用了哪些规则。设备里配置的其他信息（主机名、地址、序列号）保留。
+- 首次连接记下 SSH 主机密钥指纹（界面自动保存在设备里，命令行会显示，下次用 `--host-key` 传入），之后指纹不符会在发送密码前停下。设备确实换过密钥时，在设备编辑框里清除记录的指纹。
+- `show tech-support` / `display diagnostic-information` 会让设备 CPU 短时升高，大型设备要几分钟到几十分钟，业务高峰期慎用。SSH 端口不是 22 时，地址写成 `10.0.0.20:2222`。
+- 加 `--record` 保存的诊断记录是命令行会话（`.netrec.json`），里面没有密码和设备地址，输出按同样的规则遮盖。
 
 `probe` 和 `collect` 加 `--record` 会把这次的接口往返保存成诊断记录（日志包本身只留开头一小段和 SHA-256）。记录里已自动去掉密码、会话令牌、Cookie 和设备 IP，但仍保留型号、序列号、主机名和其他地址等设备信息，发给别人前请先看一遍。
 
@@ -151,6 +171,7 @@ scripts/build.sh v0.1.0            # 编译带版本资源的 Windows exe 到 di
 各品牌接口靠两层测试保证：
 
 - **回放测试**：`internal/redfish/testdata/` 里是录制下来的接口往返，测试时代替真实设备，每次提交自动运行。每份记录的 `note` 字段写明它是真机录制还是按文档合成的。
+- **模拟网络设备**：`internal/netsim` 按厂商文档模拟思科、华为、新华三的 SSH 命令行（分页、enable、提问、诊断信息输出），网络设备的端到端测试和 `internal/drivers/testdata/*.netrec.json` 的合成记录都由它生成。`go run ./cmd/netsim` 可以在本机起几台模拟设备，在界面里添加试用。模拟设备的输出是合成的，不能代替真机验证。
 - **真机验证**：只能在能访问管理网的电脑上进行。用 `probe --record` 和 `collect --record` 录下真机的响应，检查后放进对应的 `testdata/`（整机收集流程在 `internal/drivers/testdata/`），再写回放测试。
 
 自动回放通过不等于真机验收；已在真机上验证的品牌、型号和固件会写在发布说明里。
@@ -159,12 +180,15 @@ scripts/build.sh v0.1.0            # 编译带版本资源的 Windows exe 到 di
 
 ```
 cmd/logdiag-collector/   程序入口和子命令（ui、probe、collect、inspect、version）
+cmd/netsim/              开发用：在本机启动模拟的网络设备（不随 exe 发布）
 internal/drivers/        识别设备、选择驱动、执行一次收集
 internal/collect/        驱动公共部分：阶段进度、文件落盘与校验、manifest
 internal/collect/huawei/ 华为、超聚变 iBMC 驱动
 internal/collect/inspur/ 浪潮 M5/M6/M7 驱动
 internal/oscheck/        OS 巡检：SSH 上传脚本、root/sudo 运行、取回结果（内置巡检脚本）
 internal/sshx/           SSH 连接、防锁号认证、主机密钥核对、执行命令与诊断记录
+internal/collect/netdev/ 网络设备收集：SSH 命令行、按系统（IOS、NX-OS、ASA、VRP、Comware）选命令、脱敏
+internal/netsim/         模拟网络设备的 SSH 命令行，供测试和演示
 internal/redfish/        Redfish 会话、请求、任务轮询、文件下载
 internal/httprec/        HTTP 录制与回放（诊断记录和回放测试共用）
 internal/ui/             本机界面服务和接口
