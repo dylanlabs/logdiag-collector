@@ -23,6 +23,7 @@ import (
 	"github.com/dylanlabs/logdiag-collector/internal/inventory"
 	"github.com/dylanlabs/logdiag-collector/internal/results"
 	"github.com/dylanlabs/logdiag-collector/internal/tasks"
+	"github.com/dylanlabs/logdiag-collector/internal/update"
 	"github.com/dylanlabs/logdiag-collector/internal/xlsx"
 )
 
@@ -32,8 +33,9 @@ type App struct {
 	Settings     *appdata.SettingsStore
 	Tasks        *tasks.Manager
 	DataDir      string
-	SecretMethod string   // 密码的加密方式，显示在设置页
-	Warnings     []string // 启动时发现的问题（例如设备库损坏已备份），界面打开时提示
+	SecretMethod string          // 密码的加密方式，显示在设置页
+	Warnings     []string        // 启动时发现的问题（例如设备库损坏已备份），界面打开时提示
+	Update       *update.Checker // 检查更新；为 nil 时读 logdiag.com，连不上时读 GitHub
 
 	imports sync.Map // 导入预览，键是一次性令牌
 }
@@ -125,6 +127,7 @@ func (s *Server) routes(app *App) {
 	s.api("GET /api/results", app.listResults)
 	s.api("POST /api/results/package", app.buildPackage)
 	s.api("POST /api/open", app.open)
+	s.api("POST /api/update/check", app.checkUpdate)
 	s.api("GET /api/settings", app.getSettings)
 	s.api("POST /api/settings", s.publishing(app.setSettings))
 }
@@ -506,7 +509,20 @@ func (a *App) open(w http.ResponseWriter, r *http.Request) (any, error) {
 	return map[string]bool{"ok": true}, nil
 }
 
-// allowedLink 限定界面能打开的外部网页。
+// checkUpdate 读最新版本信息，只在用户点击“检查更新”时调用。连不上网不是程序的错，返回 502 和原因。
+func (a *App) checkUpdate(w http.ResponseWriter, r *http.Request) (any, error) {
+	c := a.Update
+	if c == nil {
+		c = &update.Checker{}
+	}
+	res, err := c.Check(r.Context(), buildinfo.Version)
+	if err != nil {
+		return nil, &userError{http.StatusBadGateway, err.Error()}
+	}
+	return res, nil
+}
+
+// allowedLink 限定界面能打开的外部网页（检查更新给出的下载页由 update.PageLink 按同样的规则筛过）。
 func allowedLink(raw string) bool {
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme != "https" || u.User != nil || u.Port() != "" {

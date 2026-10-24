@@ -34,6 +34,7 @@ const usage = `LogDiag Collector：服务器、存储、网络设备日志一键
   logdiag-collector probe [选项]   只读探测一台设备的 Redfish 接口，可保存诊断记录
   logdiag-collector collect [选项] 对一台设备一键收集日志包（华为、超聚变、浪潮）
   logdiag-collector version       显示版本
+  logdiag-collector verify <文件>  检查离线上传包是否完整（拷到 U 盘或别的电脑后可以再查一次）
 
 查看子命令的选项：logdiag-collector <子命令> -h
 `
@@ -104,6 +105,8 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	case "version":
 		fmt.Fprintln(stdout, buildinfo.Get())
 		return 0
+	case "verify":
+		return runVerify(args, stdout, stderr)
 	case "help":
 		fmt.Fprint(stdout, usage)
 		return 0

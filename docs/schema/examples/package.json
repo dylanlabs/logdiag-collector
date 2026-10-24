@@ -1,0 +1,81 @@
+{
+  "schema": "logdiag.package/1",
+  "package_id": "5d0c8e1a-3b7f-4e2a-9c61-8f4b2a7d9e03",
+  "created_at": "2026-11-20T14:30:00+08:00",
+  "tool": {
+    "name": "LogDiag Collector",
+    "version": "0.1.0"
+  },
+  "customer": "示例客户",
+  "batch_ids": [
+    "2f6c1d0e-8a4b-4c1e-9f3a-5b7d2e9c4a10"
+  ],
+  "devices": [
+    {
+      "dir": "Huawei_2288HV5_2102311TYBN0K8000123_dump_20261120-1403",
+      "log_type": "huawei.ibmc.dump",
+      "files": [
+        {
+          "name": "manifest.json",
+          "size": 784,
+          "sha256": "a96d8b4b5dc73cfe9f5a9340fe70f7b5cb1cc0e7728cf77fabd380f1378f4536",
+          "role": "manifest"
+        },
+        {
+          "name": "dump_info.tar.gz",
+          "size": 211,
+          "sha256": "3d7f737d6f539db180eb61ec002bae890bfc0eb19bff6a08f64e2a902a003245",
+          "role": "main"
+        }
+      ]
+    },
+    {
+      "dir": "Inspur_NF5280M6_220123456_onekeylog_20261120-1404",
+      "log_type": "inspur.bmc.onekeylog",
+      "files": [
+        {
+          "name": "manifest.json",
+          "size": 772,
+          "sha256": "8a26c5fc322b484bc97f9a5dc0b1e6c9f813ec8cfea4a6144fefbd91778e02f3",
+          "role": "manifest"
+        },
+        {
+          "name": "onekeylog.tar.gz",
+          "size": 211,
+          "sha256": "e00944e1e0f9ccecaae1bc005ffc5e33cc73ee8c66bf8f38edd922bf34827713",
+          "role": "main"
+        }
+      ]
+    },
+    {
+      "dir": "HPE_ProLiantDL380Gen10_CZJ00000A1_ahs_20261120-1405",
+      "log_type": "hpe.ilo.ahs",
+      "files": [
+        {
+          "name": "manifest.json",
+          "size": 1109,
+          "sha256": "bf013b1a332084dbfdb90d3337a2181b877ddf078782a70bdadf2440ac6b0ebb",
+          "role": "manifest"
+        },
+        {
+          "name": "HPE_CZJ00000A1_20261120.ahs",
+          "size": 41,
+          "sha256": "be54b3032f92b0fcb957769af3355fb7a5b917ccc8296b9213240c2959ad57c8",
+          "role": "main"
+        },
+        {
+          "name": "IEL.json",
+          "size": 343,
+          "sha256": "2a6f71356c05651e74d69602319acbeb42e34b08a944a201969f2e7556c1436c",
+          "role": "extra"
+        },
+        {
+          "name": "IML.json",
+          "size": 341,
+          "sha256": "d573d14ea6039206ef94fb32b7e64b7e791b2646cf7bf49c6254fdd3ed46643d",
+          "role": "extra"
+        }
+      ]
+    }
+  ]
+}

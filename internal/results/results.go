@@ -192,7 +192,7 @@ func BuildPackage(root string, dirs []string, tool collect.Tool, now time.Time) 
 		}
 	}
 
-	pkg := Package{Schema: PackageSchema, PackageID: newUUID(), CreatedAt: now.Format(time.RFC3339), Tool: tool, Customer: customer}
+	pkg := Package{Schema: PackageSchema, PackageID: newPackageID(), CreatedAt: now.Format(time.RFC3339), Tool: tool, Customer: customer, BatchIDs: []string{}}
 	outDir := filepath.Join(root, PackageFolder)
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return nil, err
@@ -309,6 +309,9 @@ func safePart(s string) string {
 	}
 	return strings.Trim(s, ".-")
 }
+
+// newPackageID 生成 package_id；生成契约样例包时换成固定值。
+var newPackageID = newUUID
 
 func newUUID() string {
 	var b [16]byte

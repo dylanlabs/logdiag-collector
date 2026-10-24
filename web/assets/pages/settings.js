@@ -5,7 +5,7 @@
 
 import { h, button, api, bus, toast, showError, input, checkbox, pageHead, card, soon, tag } from '../lib.js';
 import { store } from '../store.js';
-import { openPath, openLink, links } from '../actions.js';
+import { openPath, openLink, links, checkUpdate } from '../actions.js';
 
 function row(name, ...controls) {
   return h('div', { class: 'setting-row' },
@@ -100,12 +100,13 @@ export function mount(root) {
       row('主密码',
         h('div', { class: 'inline' }, soon(), h('span', { class: 'field-hint', text: '设置后每次打开程序要先输入主密码，才能使用保存的密码。' }))),
       row('联网',
-        h('div', { text: '只在你点击时联网（检查更新、上传、反馈）。和设备通信不走系统代理。' }))),
+        h('div', { text: '只在你点击时联网（检查更新、上传、反馈），按 Windows 的代理设置访问外网。和设备通信直连管理网，不走代理。' }))),
     card('更新与上传',
       row('检查更新',
-        h('div', { class: 'inline' }, soon('v0.1'),
+        h('div', { class: 'inline' },
+          button('检查更新', { size: 'small', icon: 'update', onclick: checkUpdate }),
           button('打开发布页', { size: 'small', icon: 'open', onclick: () => openLink(links.releases) })),
-        hint('现在可以在发布页对照版本号下载新版本。')),
+        hint('先读 logdiag.com 上的最新版本信息，连不上时读 GitHub，只发送程序名和版本号。有新版本时由你决定是否打开下载页，程序不会自己下载或安装。')),
       row('上传到 LogDiag',
         h('div', { class: 'inline' }, soon('1.1'), h('span', { class: 'field-hint', text: '届时在这里填写 LogDiag 账号的上传令牌。' })))),
     card('关于',

@@ -1,0 +1,36 @@
+{
+  "schema": "logdiag.manifest/1",
+  "tool": {
+    "name": "LogDiag Collector",
+    "version": "0.1.0"
+  },
+  "collected_at": "2026-11-20T14:03:00+08:00",
+  "customer": "示例客户",
+  "batch_id": "2f6c1d0e-8a4b-4c1e-9f3a-5b7d2e9c4a10",
+  "device": {
+    "type": "server",
+    "vendor": "Huawei",
+    "model": "2288H V5",
+    "serial": "2102311TYBN0K8000123",
+    "mgmt_ip": "192.0.2.10",
+    "controller": {
+      "type": "iBMC",
+      "firmware": "3.08.01.07"
+    }
+  },
+  "log": {
+    "type": "huawei.ibmc.dump",
+    "method": "redfish-oem"
+  },
+  "files": [
+    {
+      "name": "dump_info.tar.gz",
+      "size": 211,
+      "sha256": "3d7f737d6f539db180eb61ec002bae890bfc0eb19bff6a08f64e2a902a003245",
+      "role": "main"
+    }
+  ],
+  "redaction": {
+    "applied": false
+  }
+}

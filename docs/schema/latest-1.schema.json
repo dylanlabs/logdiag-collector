@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/dylanlabs/logdiag-collector/blob/main/docs/schema/latest-1.schema.json",
+  "title": "LogDiag Collector 最新版本信息（latest.json）第 1 版",
+  "description": "放在 https://logdiag.com/collector/latest.json。Collector 只在用户点“检查更新”时读一次，与当前版本比较，有新版本时询问后用浏览器打开下载页，不自动下载或安装。发布流水线生成这个文件并附在 GitHub Release 里。和 BMCKit 的 latest.json 兼容：只有 version、url、notes 三项也能用。样例见 examples/latest.json。",
+  "type": "object",
+  "required": ["version", "url"],
+  "properties": {
+    "schema": { "const": "logdiag.latest/1" },
+    "product": { "type": "string", "examples": ["LogDiag Collector"] },
+    "version": { "$ref": "#/$defs/version", "description": "最新的正式版本号，可带前缀 v" },
+    "released_at": { "type": "string", "format": "date-time", "description": "发布时间，RFC 3339" },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://",
+      "description": "下载页。Collector 只打开 logdiag.com 和本项目 GitHub 上的 HTTPS 页面，没有 utm_source 时加上 utm_source=collector&utm_medium=app"
+    },
+    "notes": { "type": "string", "description": "这个版本的更新说明，Collector 显示时最多 600 字" },
+    "min_supported": {
+      "$ref": "#/$defs/version",
+      "description": "仍然支持的最低版本。本机版本更低时提示必须升级，例如旧版本有安全问题"
+    },
+    "downloads": {
+      "type": "array",
+      "description": "下载文件，供网站下载页显示文件名、大小和 SHA-256。Collector 不读这一项，也不会自己下载",
+      "items": {
+        "type": "object",
+        "required": ["name", "os", "arch", "size", "sha256", "url"],
+        "properties": {
+          "name": { "type": "string", "examples": ["LogDiagCollector-0.1.0-win-x64.exe"] },
+          "os": { "enum": ["windows"] },
+          "arch": { "enum": ["amd64", "arm64"] },
+          "size": { "type": "integer", "minimum": 1 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "url": { "type": "string", "format": "uri", "pattern": "^https://", "description": "主下载地址（logdiag.com）" },
+          "mirror": { "type": "string", "format": "uri", "pattern": "^https://", "description": "备用下载地址（GitHub Release）" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "version": { "type": "string", "pattern": "^v?[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?$" }
+  }
+}

@@ -1,27 +1,28 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/dylanlabs/logdiag-collector/blob/main/docs/schema/package-1.schema.json",
-  "title": "LogDiag 离线上传包第 1 版（草案）",
-  "description": "离线上传包（zip）根目录下的 package.json。包里每个设备一个文件夹，文件夹里是日志文件和 manifest.json（见 manifest-1.schema.json）。一个包只含一个客户的结果。网站侧尚未接入，字段可能在网站对接时调整；小版本只加字段、不改含义。",
+  "title": "LogDiag 离线上传包第 1 版",
+  "description": "离线上传包（zip）里的 package.json，列出包里每个设备文件夹和全部文件的大小、SHA-256。包的结构和网站的校验步骤见 README.md，样例包见 examples/packages/。小版本只加字段、不改含义，读取方忽略不认识的字段。",
   "type": "object",
   "required": ["schema", "package_id", "created_at", "tool", "customer", "batch_ids", "devices"],
   "properties": {
     "schema": { "const": "logdiag.package/1" },
-    "package_id": { "type": "string", "format": "uuid", "description": "每个包唯一，网站可据此去重" },
-    "created_at": { "type": "string", "format": "date-time", "description": "打包时间，带时区" },
+    "package_id": { "type": "string", "format": "uuid", "description": "每个包唯一。同一个包再次上传时，网站可以据此提示已经传过" },
+    "created_at": { "type": "string", "format": "date-time", "description": "打包时间，RFC 3339，带时区" },
     "tool": {
       "type": "object",
       "required": ["name", "version"],
       "properties": {
-        "name": { "type": "string" },
-        "version": { "type": "string" }
+        "name": { "type": "string", "examples": ["LogDiag Collector"] },
+        "version": { "type": "string", "examples": ["0.1.0"] }
       }
     },
-    "customer": { "type": "string", "description": "包里所有设备共同的客户名称，可以为空" },
+    "customer": { "type": "string", "description": "包里所有设备共同的客户名称，可以为空；和每个 manifest 的 customer 相同（一个包只含一个客户的结果）" },
     "batch_ids": {
-      "type": ["array", "null"],
+      "type": "array",
+      "uniqueItems": true,
       "items": { "type": "string", "format": "uuid" },
-      "description": "包里结果来自哪些批次（manifest 的 batch_id）"
+      "description": "包里的结果来自哪些批次，即各 manifest 的 batch_id"
     },
     "devices": {
       "type": "array",
@@ -30,17 +31,17 @@
         "type": "object",
         "required": ["dir", "log_type", "files"],
         "properties": {
-          "dir": { "type": "string", "description": "包里的设备文件夹名（只有一层）" },
-          "log_type": { "type": "string", "description": "同 manifest 的 log.type", "examples": ["huawei.ibmc.dump", "inspur.bmc.onekeylog"] },
+          "dir": { "$ref": "#/$defs/name", "description": "设备文件夹名，在包的根目录下，只有一层" },
+          "log_type": { "type": "string", "pattern": "^[a-z0-9]+(\\.[a-z0-9]+)+$", "description": "同 manifest 的 log.type" },
           "files": {
             "type": "array",
             "minItems": 2,
-            "description": "文件夹里的全部文件，含 manifest.json；SHA-256 在打包时重新计算并与 manifest 核对过",
+            "description": "设备文件夹里的全部文件：manifest.json（role 为 manifest）、至少一个日志文件（role 为 main），以及附带文件（role 为 extra）。SHA-256 是打包时重新计算、并与 manifest 核对过的",
             "items": {
               "type": "object",
               "required": ["name", "size", "sha256", "role"],
               "properties": {
-                "name": { "type": "string", "description": "相对设备文件夹的文件名" },
+                "name": { "$ref": "#/$defs/name", "description": "文件名，相对设备文件夹" },
                 "size": { "type": "integer", "minimum": 0 },
                 "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
                 "role": { "enum": ["main", "extra", "manifest"] }
@@ -49,6 +50,16 @@
           }
         }
       }
+    }
+  },
+  "$defs": {
+    "name": {
+      "type": "string",
+      "description": "只有一层的名字：不含 / \\ : 和控制字符，不是 . 或 ..",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[^/\\\\:\\x00-\\x1f]+$",
+      "not": { "enum": [".", ".."] }
     }
   }
 }

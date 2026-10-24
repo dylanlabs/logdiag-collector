@@ -58,8 +58,8 @@ gh attestation verify LogDiagCollector.exe --repo dylanlabs/logdiag-collector
 | --- | --- |
 | 设备列表 | 添加、批量添加（支持地址范围和网段）、编辑、删除设备；从 Excel/CSV 设备表或 BMCKit 导出的发现结果导入，导出为 Excel/CSV（不含密码）；凭据模板；检查连通（不登录）；识别型号（登录读取品牌、型号、序列号并回填） |
 | 日志收集 | 勾选设备批量收集，显示每台设备的阶段、进度、失败原因和处理办法；可以取消、重试、导出诊断记录 |
-| 收集结果 | 列出保存位置里的日志包，按客户打成离线上传包（zip，包里的 `package.json` 格式见 [docs/schema/package-1.schema.json](docs/schema/package-1.schema.json)，网站侧尚未接入） |
-| 设置 | 保存位置、同时收集的台数、单台超时、诊断记录、OS 巡检模块开关 |
+| 收集结果 | 列出保存位置里的日志包，按客户打成离线上传包（zip），拷到能上网的电脑再上传到 LogDiag。包的格式和网站的检查步骤见 [docs/schema](docs/schema/README.md)，网站侧正在接入 |
+| 设置 | 保存位置、同时收集的台数、单台超时、诊断记录、OS 巡检模块开关、检查更新 |
 | 健康与告警 | 计划 1.1 提供，目前只有页面布局 |
 | OS 巡检 | 计划 1.0 提供（Windows 巡检 1.1），目前只有页面布局，可在设置里隐藏 |
 
@@ -73,6 +73,7 @@ gh attestation verify LogDiagCollector.exe --repo dylanlabs/logdiag-collector
 LogDiagCollector.exe                       启动界面
 LogDiagCollector.exe probe --host 10.0.0.10 --user admin --record probe.json
 LogDiagCollector.exe collect --host 10.0.0.10 --user admin --record collect.json
+LogDiagCollector.exe verify LogDiag-示例客户-20261120-1430-5d0c8e1a.zip
 LogDiagCollector.exe version               显示版本
 LogDiagCollector.exe help                  查看全部命令
 ```
@@ -90,7 +91,7 @@ LogDiagCollector.exe help                  查看全部命令
 
 品牌自动识别，也可以用 `--brand huawei|xfusion|inspur` 指定。生成要 3 到 10 分钟，期间显示进度；按 Ctrl+C 取消时会退出会话，设备端的生成任务不受影响。工具不清除日志、不重启设备，认证失败立即停止、不重试。
 
-文件保存在 `--out` 指定的位置（默认当前文件夹），一台设备一个文件夹，旁边的 `manifest.json` 写明设备、日志类型和 SHA-256，LogDiag 据此自动识别（格式见 [docs/schema/manifest-1.schema.json](docs/schema/manifest-1.schema.json)）：
+文件保存在 `--out` 指定的位置（默认当前文件夹），一台设备一个文件夹，旁边的 `manifest.json` 写明设备、日志类型和 SHA-256，LogDiag 用它核对文件、显示设备信息（格式见 [docs/schema/manifest-1.schema.json](docs/schema/manifest-1.schema.json)）：
 
 ```
 [客户]\20261026\Huawei_2288HV5_2102311XXXXX_dump_20261026-1403\
@@ -100,18 +101,20 @@ LogDiagCollector.exe help                  查看全部命令
 
 已知限制：浪潮部分新固件要求网页登录时对账号密码加密，目前还不支持，这类设备会显示“认证失败”。
 
+`verify` 检查离线上传包是否完整：每个文件的大小和 SHA-256、`manifest.json` 和 `package.json` 是否一致，拷到 U 盘或别的电脑后可以再查一次；加 `--json` 输出机器可读的结果。网站收包时按同样的步骤检查。
+
 `probe` 和 `collect` 加 `--record` 会把这次的接口往返保存成诊断记录（日志包本身只留开头一小段和 SHA-256）。记录里已自动去掉密码、会话令牌、Cookie 和设备 IP，但仍保留型号、序列号、主机名和其他地址等设备信息，发给别人前请先看一遍。
 
 ## 隐私说明
 
 - **不收集遥测**，不上报任何使用数据。
-- **默认不联网。** 只有你点击“检查更新”“上传到 LogDiag”“问题反馈”“开始分析日志”时才会访问 logdiag.com。和设备之间的通信直连管理网，不经过系统代理。
+- **默认不联网。** 只有你点击“检查更新”“上传到 LogDiag”“问题反馈”“开始分析日志”时才会访问 logdiag.com。检查更新先读 logdiag.com 上的最新版本信息，连不上时改读 GitHub 上的最新 Release，请求里只有程序名和版本号；有新版本时由你决定是否打开下载页，程序不会自己下载或安装。访问外网时按 Windows 的代理设置走代理；和设备之间的通信直连管理网，不经过代理。
 - **凭据只留在本机。** 设备和凭据模板的密码用 Windows DPAPI 加密保存（绑定当前 Windows 用户，换电脑或换账号都解不开），界面上不回显，导出的表格不含密码，永远不会上传。
 - **日志由你决定是否上传。** 收集到的日志可能含设备配置、序列号、主机名、IP 等信息；上传前会列出文件清单由你确认。
 - **诊断记录自动脱敏**，去掉的内容和保留的内容见上面的 `probe` 说明。界面导出的诊断记录文件名也不带设备 IP。
 - **本机界面只有你能访问**：只监听 127.0.0.1，并用一次性令牌打开，局域网里的其他电脑访问不到。
 
-当前开发版自身不联网，“开始分析日志”“打开发布页”等按钮只是在浏览器里打开网页。以上承诺适用于以后的所有版本。
+目前程序自己只在检查更新时联网，“开始分析日志”“打开发布页”等按钮只是在浏览器里打开网页。以上承诺适用于以后的所有版本。
 
 ## 代码签名政策（Code signing policy）
 
@@ -137,6 +140,12 @@ scripts/build.sh v0.1.0            # 编译带版本资源的 Windows exe 到 di
 
 同一提交在任何机器上编出的 exe 完全相同，可以自己编译后与 Release 里的 SHA-256 比对。界面在 `web/` 目录，是原生 HTML、CSS 和 JavaScript，不需要 npm。
 
+### 发布新版本
+
+1. 在 `CHANGELOG.md` 里把“未发布”改成版本号，写清楚给用户的变化，合入 main。
+2. `git tag v0.1.0 && git push origin v0.1.0`。流水线测试、编译，生成 `SHA256SUMS`、`latest.json` 和构建证明，创建 Release。
+3. 把 Release 里的 exe 放到 logdiag.com 的下载地址，**再**把 `latest.json` 放到 `https://logdiag.com/collector/latest.json`。顺序反过来，用户点“检查更新”会拿到还没上传的下载地址。
+
 ## 测试与真机验证
 
 各品牌接口靠两层测试保证：
@@ -149,7 +158,7 @@ scripts/build.sh v0.1.0            # 编译带版本资源的 Windows exe 到 di
 ## 目录结构
 
 ```
-cmd/logdiag-collector/   程序入口和子命令（ui、probe、collect、version）
+cmd/logdiag-collector/   程序入口和子命令（ui、probe、collect、verify、version）
 internal/drivers/        识别设备、选择驱动、执行一次收集
 internal/collect/        驱动公共部分：阶段进度、文件落盘与校验、manifest
 internal/collect/huawei/ 华为、超聚变 iBMC 驱动
@@ -165,8 +174,10 @@ internal/secret/         密码加密（Windows DPAPI）
 internal/xlsx/           读写 Excel .xlsx（只用标准库）
 internal/buildinfo/      版本信息
 web/                     界面静态文件（原生 ES Module + CSS），编译时嵌入 exe
-docs/schema/             manifest 和离线上传包的 JSON Schema（与 LogDiag 网站共用）
+internal/update/         检查更新（读 latest.json，GitHub 兜底，走系统代理）
+docs/schema/             manifest、离线上传包、latest.json 的格式和契约样例（与 LogDiag 网站共用）
 scripts/build.sh         编译 Windows exe
+scripts/latestjson/      发布时生成 latest.json
 ```
 
 ## 许可证
