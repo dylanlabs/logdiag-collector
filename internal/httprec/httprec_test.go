@@ -196,10 +196,10 @@ func TestRedactForm(t *testing.T) {
 }
 
 func TestReplaceHost(t *testing.T) {
-	got := replaceHost("10.0.0.1, 10.0.0.10, a10.0.0.1, https://10.0.0.1/x", "10.0.0.1", HostPlaceholder)
+	got := ReplaceHost("10.0.0.1, 10.0.0.10, a10.0.0.1, https://10.0.0.1/x", "10.0.0.1", HostPlaceholder)
 	want := "{{host}}, 10.0.0.10, a10.0.0.1, https://{{host}}/x"
 	if got != want {
-		t.Errorf("replaceHost = %q，应为 %q", got, want)
+		t.Errorf("ReplaceHost = %q，应为 %q", got, want)
 	}
 }
 

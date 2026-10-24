@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/dylanlabs/logdiag-collector/internal/sshx"
 )
 
 // ErrTimeout 表示等待设备超过了设定的时间。
@@ -32,6 +34,7 @@ const (
 	KindTimeout          // 超时
 	KindTaskFailed       // 设备端任务失败
 	KindCanceled         // 用户取消
+	KindHostKey          // SSH 主机密钥和记录的不一致
 )
 
 var kindText = map[Kind][2]string{
@@ -44,6 +47,7 @@ var kindText = map[Kind][2]string{
 	KindTimeout:     {"超时", "设备生成日志较慢，可调大超时时间后重试。"},
 	KindTaskFailed:  {"设备端任务失败", "查看设备返回的信息；如反复失败，导出诊断记录发给开发者。"},
 	KindCanceled:    {"已取消", "设备端可能仍在生成，稍后可再次收集。"},
+	KindHostKey:     {"主机密钥不符", "服务器的 SSH 主机密钥和上次记录的不一样：可能重装过系统，也可能有人冒充这台服务器。确认无误后在设备里清除记录的主机密钥再试。"},
 }
 
 // String 返回分类名称。
@@ -62,6 +66,7 @@ func KindOf(err error) Kind {
 		taskErr *TaskError
 		netErr  net.Error
 		urlErr  *url.Error
+		hostKey *sshx.HostKeyError
 	)
 	switch {
 	case errors.Is(err, ErrTimeout), errors.Is(err, context.DeadlineExceeded):
@@ -72,6 +77,12 @@ func KindOf(err error) Kind {
 		return KindUnsupported
 	case errors.As(err, &taskErr):
 		return KindTaskFailed
+	case errors.Is(err, sshx.ErrAuth):
+		return KindAuth
+	case errors.As(err, &hostKey):
+		return KindHostKey
+	case errors.Is(err, sshx.ErrNoPassword), errors.Is(err, sshx.ErrAlgorithms):
+		return KindUnsupported
 	case errors.As(err, &httpErr):
 		switch httpErr.StatusCode {
 		case http.StatusUnauthorized:
