@@ -107,6 +107,7 @@ type Device struct {
 	LegacyTLS     bool         `json:"legacy_tls"`
 	HasPassword   bool         `json:"has_password"`
 	HasOSPassword bool         `json:"has_os_password"`
+	HasEnable     bool         `json:"has_enable"` // 网络设备填了 enable 密码
 	Status        Status       `json:"status"`
 	LastCollect   *LastCollect `json:"last_collect,omitempty"`
 	CreatedAt     time.Time    `json:"created_at"`
@@ -117,6 +118,7 @@ type deviceRecord struct {
 	Device
 	Password   string `json:"password,omitempty"`    // 管理口密码密文
 	OSPassword string `json:"os_password,omitempty"` // 操作系统账号密码密文
+	Enable     string `json:"enable,omitempty"`      // 网络设备 enable 密码密文
 }
 
 // Credential 是凭据模板：同一客户同一批设备常用同一个账号，改密码时只改一处。
@@ -153,6 +155,7 @@ type Patch struct {
 	OSUser       *string `json:"os_user,omitempty"`
 	OSPassword   *string `json:"os_password,omitempty"`
 	SSHHostKey   *string `json:"ssh_host_key,omitempty"` // 传空字符串即清除记录的主机密钥
+	Enable       *string `json:"enable,omitempty"`       // 网络设备的 enable 密码，空字符串表示清除
 	Location     *string `json:"location,omitempty"`
 	Notes        *string `json:"notes,omitempty"`
 	LegacyTLS    *bool   `json:"legacy_tls,omitempty"`
@@ -220,6 +223,7 @@ func Open(dir string, box secret.Box) (*Store, string, error) {
 		}
 		d.HasPassword = d.Password != ""
 		d.HasOSPassword = d.OSPassword != ""
+		d.HasEnable = d.Enable != ""
 		s.devices = append(s.devices, d)
 	}
 	for _, c := range f.Credentials {
@@ -438,7 +442,7 @@ func (s *Store) Update(ids []string, p Patch) ([]Device, error) {
 			}
 			return nil, err
 		}
-		if c.User != d.User || c.Password != d.Password || c.CredentialID != d.CredentialID {
+		if c.User != d.User || c.Password != d.Password || c.CredentialID != d.CredentialID || c.Enable != d.Enable {
 			// 账号变了，上次的登录结果不再算数。
 			c.Status.Login, c.Status.LoginMessage = LoginUnknown, ""
 		}
@@ -592,6 +596,14 @@ func (s *Store) apply(d *deviceRecord, p Patch) error {
 		d.OSPassword = sealed
 		d.HasOSPassword = sealed != ""
 	}
+	if p.Enable != nil {
+		sealed, err := s.sealPassword(*p.Enable, "enable 密码")
+		if err != nil {
+			return err
+		}
+		d.Enable = sealed
+		d.HasEnable = sealed != ""
+	}
 	if p.SSHHostKey != nil {
 		d.SSHHostKey = sshx.NormalizeFingerprint(*p.SSHHostKey)
 	}
@@ -714,6 +726,7 @@ type Access struct {
 	Device   Device
 	User     string
 	Password string
+	Enable   string // 网络设备的 enable 密码，可空
 }
 
 // Access 返回设备的账号和密码；设备绑定了凭据模板时用模板里的账号。
@@ -746,6 +759,11 @@ func (s *Store) Access(id string) (Access, error) {
 		return a, err
 	}
 	a.Password = plain
+	if d.Enable != "" {
+		if a.Enable, err = s.box.Open(d.Enable); err != nil {
+			return a, err
+		}
+	}
 	return a, nil
 }
 

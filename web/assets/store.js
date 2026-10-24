@@ -102,15 +102,40 @@ export function brandOf(vendor) {
   return v ? brands.find((b) => b.keys.some((k) => v.includes(k))) : undefined;
 }
 
+// netBrands 是已支持一键收集的网络设备厂商，写法同 brands。连上以后按系统识别，品牌只用来提前挡住明显不支持的设备；
+// HPE 的 FlexNetwork 交换机（原 H3C）是 Comware 系统，按新华三处理。
+export const netBrands = [
+  { keys: ['cisco', '思科'], name: '思科', vendor: 'Cisco' },
+  { keys: ['huawei', '华为'], name: '华为', vendor: 'Huawei' },
+  { keys: ['h3c', '新华三', '华三', 'hpe', 'hewlett', '慧与', '惠普', 'hp'], name: '新华三', vendor: 'H3C' },
+];
+
+// netBrandOf 把网络设备的品牌写法对应到 netBrands 里的一项，认不出时为 undefined。
+export function netBrandOf(vendor) {
+  const v = (vendor || '').toLowerCase();
+  return v ? netBrands.find((b) => b.keys.some((k) => v.includes(k))) : undefined;
+}
+
+// networkSupport 是网络设备的一键收集支持情况，格式同 support。
+function networkSupport(device) {
+  if (!device.vendor) return { status: 'auto', text: '收集时识别', tone: 'gray', blocked: false };
+  if (netBrandOf(device.vendor)) return { status: 'supported', text: '支持', tone: 'green', blocked: false };
+  return {
+    status: 'none', text: '暂不支持', tone: 'gray', blocked: true,
+    reason: `暂不支持这个品牌的网络设备（已支持${store.state?.supported_net || '思科、华为、新华三'}）。如果品牌填错了，清空品牌后收集时会自动识别`,
+  };
+}
+
 // support 返回设备的一键收集支持情况：
 // { status: 'supported'|'auto'|'v0.1'|'v0.2'|'1.0'|'none', text（表格里的短说明）, reason（不能收集时的原因）, tone, blocked }。
 export function support(device) {
   const supported = store.state?.supported || '华为、超聚变、浪潮';
   if (device.type && device.type !== 'server') {
-    const [v, name] = device.type === 'network' ? ['1.0', '网络设备'] : device.type === 'storage' ? ['v0.2', '存储'] : ['', '这类设备'];
+    if (device.type === 'network') return networkSupport(device);
+    const [v, name] = device.type === 'storage' ? ['v0.2', '存储'] : ['', '这类设备'];
     return {
       status: v || 'none', text: v ? `计划 ${v}` : '暂不支持', tone: v ? 'blue' : 'gray', blocked: true,
-      reason: v ? `${name}的日志收集计划在 ${v} 支持` : '目前只支持服务器的一键收集',
+      reason: v ? `${name}的日志收集计划在 ${v} 支持` : '目前只支持服务器和网络设备的一键收集',
     };
   }
   if (!device.vendor) return { status: 'auto', text: '收集时识别', tone: 'gray', blocked: false };
@@ -150,13 +175,19 @@ export const logTypes = {
   'dell.idrac.tsr': 'Dell iDRAC TSR',
   'hpe.ilo.ahs': 'HPE iLO AHS',
   'hpe.ilo.iml': 'HPE IML / IEL',
+  'cisco.ios.showtech': '思科 IOS / IOS XE show tech-support',
+  'cisco.nxos.showtech': '思科 NX-OS show tech-support',
+  'cisco.mds.showtech': '思科 MDS show tech-support details',
+  'cisco.asa.showtech': '思科 ASA show tech-support',
+  'huawei.vrp.diag': '华为 VRP 诊断信息',
+  'h3c.comware.diag': '新华三 Comware 诊断信息',
 };
 
 export const deviceTypes = [['server', '服务器'], ['storage', '存储'], ['network', '网络'], ['other', '其他']];
 export const typeName = Object.fromEntries(deviceTypes);
 
 // typeChoices 是设备类型下拉框：写明还没支持收集的类型计划在哪个版本支持。
-export const typeChoices = [['server', '服务器'], ['storage', '存储（收集计划 v0.2）'], ['network', '网络（收集计划 1.0）'], ['other', '其他（暂不支持收集）']];
+export const typeChoices = [['server', '服务器'], ['storage', '存储（收集计划 v0.2）'], ['network', '网络（交换机、路由器、防火墙）'], ['other', '其他（暂不支持收集）']];
 
 // deviceLabel 是提示里用的设备名称：客户 + 地址。
 export function deviceLabel(d) {

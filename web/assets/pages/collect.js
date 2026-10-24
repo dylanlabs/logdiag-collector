@@ -141,7 +141,7 @@ export function mount(root) {
           ['管理口 IP', '品牌', '型号', '序列号', '账号', '连通状态', '一键收集', '最后收集'].map((t) => h('th', { text: t })))),
         pickBody)),
     h('div', { class: 'table-foot' },
-      h('span', {}, `已支持一键收集：${store.state?.supported || '华为、超聚变、浪潮'}。联想、Dell、HPE 计划 v0.1，新华三、IBM 计划 v0.2；存储 v0.2，网络 1.0。`),
+      h('span', {}, `已支持一键收集：服务器 ${store.state?.supported || '华为、超聚变、浪潮'}，网络设备 ${store.state?.supported_net || '思科、华为、新华三'}。联想、Dell、HPE 服务器计划 v0.1，新华三、IBM 服务器计划 v0.2；存储 v0.2。`),
       h('span', { class: 'spacer' }),
       h('a', { href: '#/devices', text: '管理设备' })));
   const noDevices = h('section', { class: 'card' }, empty('devices', '还没有设备', '先在设备列表里添加设备，填写管理口 IP 和账号。',

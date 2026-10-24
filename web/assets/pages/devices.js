@@ -8,7 +8,7 @@ import {
   customerFilter, matchCustomer,
 } from '../lib.js';
 import {
-  store, loadDevices, collectingIDs, credentialName, deviceStatus, typeChoices, deviceLabel, brands, brandOf,
+  store, loadDevices, collectingIDs, credentialName, deviceStatus, typeChoices, deviceLabel, brands, brandOf, netBrands, netBrandOf,
 } from '../store.js';
 import { startCollect, showSkipped, openPath } from '../actions.js';
 
@@ -370,21 +370,53 @@ const KEEP = '\x00keep';
 
 // brandSelect 是品牌下拉框，默认“自动识别”。收集时会自动判断品牌和系列，一般不用选；
 // 只有关闭了 Redfish 的浪潮设备要选“浪潮”。value() 在用户没改动时返回设备表里原来的写法。
-function brandSelect(current, { keep = false } = {}) {
-  const known = brandOf(current);
-  const options = [
-    ...(keep ? [[KEEP, '不修改']] : []),
-    [AUTO, keep ? '改为自动识别' : '自动识别（推荐）'],
-    ...brands.map((b) => [b.vendor, b.status === 'supported' ? b.name : `${b.name}（收集计划 ${b.status}）`]),
-  ];
-  // 认不出的写法（例如识别到的其他厂商）单独列出来，保存时原样保留。
-  if (current && !known) options.push([current, current]);
-  const initial = keep ? KEEP : known ? known.vendor : current || AUTO;
-  const el = select(options, initial);
+// setType 按设备类型换选项：网络设备列网络设备厂商。
+function brandSelect(current, { keep = false, type = 'server' } = {}) {
+  const el = select([], AUTO);
+  let initial = AUTO;
+  function setType(t) {
+    const network = t === 'network';
+    const known = network ? netBrandOf(current) : brandOf(current);
+    const options = [
+      ...(keep ? [[KEEP, '不修改']] : []),
+      [AUTO, keep ? '改为自动识别' : '自动识别（推荐）'],
+      ...(network ? netBrands.map((b) => [b.vendor, b.name])
+        : brands.map((b) => [b.vendor, b.status === 'supported' ? b.name : `${b.name}（收集计划 ${b.status}）`])),
+    ];
+    // 认不出的写法（例如识别到的其他厂商）单独列出来，保存时原样保留。
+    if (current && !known) options.push([current, current]);
+    // 换类型时保留已选的品牌（两边都有的，例如华为），没有的回到原来的值。
+    const picked = el.options.length && el.value !== initial ? el.value : null;
+    initial = keep ? KEEP : known ? known.vendor : current || AUTO;
+    el.replaceChildren(...options.map(([v, label]) => h('option', { value: v }, label)));
+    el.value = picked !== null && options.some(([v]) => v === picked) ? picked : initial;
+  }
+  setType(type);
   return {
     el,
+    setType,
     value: () => (el.value === initial && !keep ? current || '' : el.value),
     changed: () => el.value !== KEEP,
+  };
+}
+
+// enableFields 是网络设备的 enable 密码。思科设备账号登录后不在特权模式（提示符是 >）时才需要。
+// keep 为 true 时（批量设置）留空表示不修改。
+function enableFields({ device, keep = false }) {
+  const d = device || {};
+  const enable = input({
+    type: 'password', autocomplete: 'new-password', maxlength: 256,
+    placeholder: keep ? '不修改' : d.has_enable ? '已保存，留空表示不修改' : '账号能直接进特权模式时不用填',
+  });
+  const clear = d.has_enable ? checkbox('清除已保存的 enable 密码', false) : null;
+  return {
+    field: field(optional('enable 密码'), enable, '思科设备账号登录后在普通模式（提示符是 >）时填写，用来执行 show tech-support'),
+    clear,
+    patch(p) {
+      if (enable.value) p.enable = enable.value;
+      else if (clear?.querySelector('input').checked) p.enable = '';
+      return p;
+    },
   };
 }
 
@@ -404,12 +436,24 @@ function editDialog(dev) {
     os: input({ value: d.os || '', placeholder: '例如 CentOS 7.9', maxlength: 100 }),
     notes: h('textarea', { class: 'input', rows: 2, value: d.notes || '', maxlength: 2000 }),
   };
-  const brand = brandSelect(d.vendor);
+  const brand = brandSelect(d.vendor, { type: d.type });
   const legacy = checkbox('允许旧版 TLS', !!d.legacy_tls);
   legacy.title = '只在老设备提示“TLS 握手失败”连不上时勾选';
   const account = accountFields({ device: dev });
+  const enable = enableFields({ device: dev });
   account.options.append(legacy);
+  if (enable.clear) account.options.append(enable.clear);
   const status = dev ? statusSection(dev) : null;
+  // 网络设备走 SSH：没有“旧版 TLS”，多一个 enable 密码。
+  const syncType = () => {
+    const network = f.type.value === 'network';
+    brand.setType(f.type.value);
+    legacy.hidden = network;
+    enable.field.hidden = !network;
+    if (enable.clear) enable.clear.hidden = !network;
+  };
+  f.type.addEventListener('change', syncType);
+  syncType();
 
   // 必填的管理口 IP、用户名、密码排第一排；其余都可以不填，品牌、型号等会在识别或收集时自动判断并回填。
   const form = h('div', { class: 'form form-3' },
@@ -419,6 +463,7 @@ function editDialog(dev) {
     field('设备类型', f.type),
     field(optional('品牌'), brand.el, '收集时自动判断品牌和系列，一般不用选'),
     field(optional('客户名称'), withList(f.customer, store.customers)),
+    enable.field,
     h('div', { class: 'form-section' }, '设备信息', h('span', { class: 'form-section-hint', text: '识别型号或收集后自动填写' })),
     field(optional('型号'), f.model), field(optional('序列号'), f.serial), field(optional('位置'), f.location),
     field(optional('主机名'), f.hostname), field(optional('主机 IP'), f.host_ip), field(optional('系统'), f.os),
@@ -433,6 +478,7 @@ function editDialog(dev) {
       if (!p.mgmt_ip) throw new Error('请填写管理口 IP');
       if (!dev) account.check();
       account.patch(p);
+      if (p.type === 'network') enable.patch(p);
       if (dev) {
         await api.post('/api/devices/update', { ids: [dev.id], patch: p });
         toast('已保存', 'ok');
@@ -455,20 +501,41 @@ function editDialog(dev) {
   return dlg;
 }
 
-// statusSection 是编辑对话框顶部的设备状态：连通、固件、最后一次收集。
+// statusSection 是编辑对话框顶部的设备状态：连通、固件、SSH 主机密钥、最后一次收集。
 function statusSection(d) {
   const st = deviceStatus(d, collectingIDs().has(d.id));
   const s = d.status || {};
   const l = d.last_collect;
+  const hostKey = d.ssh_host_key && h('dd', {}, h('code', { text: d.ssh_host_key }), ' ',
+    button('清除', {
+      kind: 'ghost', size: 'small', title: '设备换过或重新生成过密钥时清除',
+      onclick: async () => { if (await clearHostKey(d)) hostKey.replaceChildren('已清除，下次连接时重新记录'); },
+    }));
   return h('dl', { class: 'kv kv-box' },
     h('dt', { text: '连通状态' }),
     h('dd', {}, tag(st.text, st.tone), ' ', h('span', { class: 'muted', text: [s.login_message, s.reach_message].filter(Boolean)[0] || '' })),
-    h('dt', { text: '管理口固件' }), h('dd', { text: d.firmware || '—' }),
+    h('dt', { text: d.type === 'network' ? '系统版本' : '管理口固件' }), h('dd', { text: d.firmware || '—' }),
+    hostKey && [h('dt', { text: 'SSH 主机密钥' }), hostKey],
     h('dt', { text: '最后收集' }),
     h('dd', {}, l ? [
       `${fmtTime(l.at)}，${l.ok ? '' : '失败：'}${l.message}`,
       l.ok && l.dir ? [' ', button('打开文件夹', { kind: 'ghost', size: 'small', icon: 'folder', onclick: () => openPath('path', l.dir) })] : null,
     ] : '还没有收集过'));
+}
+
+// clearHostKey 清除记录的 SSH 主机密钥，清除前确认。清除后下次连接会接受设备给出的密钥。
+async function clearHostKey(d) {
+  const ok = await confirm({
+    title: '清除记录的 SSH 主机密钥',
+    message: '清除后，下次连接会接受设备当时给出的密钥并重新记录。只在确认设备换过、重装过或重新生成过密钥时清除；'
+      + '不确定时请先找设备管理员核对指纹，以免连到冒充的设备上并把密码发过去。',
+    ok: '清除', danger: true,
+  });
+  if (!ok) return false;
+  await api.post('/api/devices/update', { ids: [d.id], patch: { ssh_host_key: '' } });
+  toast('已清除记录的主机密钥', 'ok');
+  loadDevices();
+  return true;
 }
 
 // ---------- 批量添加 ----------
@@ -482,6 +549,13 @@ function batchAddDialog() {
   const type = select(typeChoices, 'server');
   const brand = brandSelect('');
   const account = accountFields({});
+  const enable = enableFields({});
+  const syncType = () => {
+    brand.setType(type.value);
+    enable.field.hidden = type.value !== 'network';
+  };
+  type.addEventListener('change', syncType);
+  syncType();
   dialog({
     title: '批量添加设备',
     wide: true,
@@ -492,13 +566,15 @@ function batchAddDialog() {
       account.options,
       field('设备类型', type),
       field(optional('品牌'), brand.el, '收集时自动判断品牌和系列，一般不用选'),
-      field(optional('客户名称'), withList(customer, store.customers))),
+      field(optional('客户名称'), withList(customer, store.customers)),
+      enable.field),
     actions: [{ text: '取消' }, {
       text: '添加', kind: 'primary', icon: 'plus',
       onclick: async () => {
         if (!addresses.value.trim()) throw new Error('请填写管理口 IP');
         account.check();
         const patch = account.patch({ customer: customer.value.trim(), type: type.value, vendor: brand.value() });
+        if (type.value === 'network') enable.patch(patch);
         const res = await api.post('/api/devices/batch', { addresses: addresses.value, patch });
         toast(`已添加 ${res.added} 台设备${res.skipped ? `，${res.skipped} 个地址已存在、已跳过` : ''}`, 'ok');
         selectNew(res.ids);
@@ -519,6 +595,8 @@ function batchEditDialog(ids) {
   const location = input({ placeholder: keep, maxlength: 100 });
   const tls = select([['', keep], ['on', '允许'], ['off', '不允许']], '');
   const account = accountFields({ keep: true });
+  const enable = enableFields({ keep: true });
+  type.addEventListener('change', () => brand.setType(type.value));
   dialog({
     title: `批量设置 ${ids.length} 台设备`,
     wide: true,
@@ -533,7 +611,8 @@ function batchEditDialog(ids) {
         field('客户名称', withList(customer, store.customers)),
         field('系统', os),
         field('位置', location),
-        field('允许旧版 TLS', tls)),
+        field('允许旧版 TLS', tls),
+        enable.field),
     ],
     actions: [{ text: '取消' }, {
       text: '保存', kind: 'primary',
@@ -547,6 +626,7 @@ function batchEditDialog(ids) {
         if (tls.value) p.legacy_tls = tls.value === 'on';
         account.check();
         account.patch(p);
+        enable.patch(p);
         if (!Object.keys(p).length) throw new Error('没有要修改的项');
         await api.post('/api/devices/update', { ids, patch: p });
         toast(`已修改 ${ids.length} 台设备`, 'ok');

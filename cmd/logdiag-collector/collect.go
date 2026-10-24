@@ -25,15 +25,23 @@ func runCollect(ctx context.Context, args []string, stdin io.Reader, stdout, std
 	host := fs.String("host", "", "管理口地址，例如 10.0.0.10 或 10.0.0.10:8443（必填）")
 	user := fs.String("user", "", "管理口账号（必填）")
 	brand := fs.String("brand", "", "品牌："+brandList()+"；不填则自动识别")
+	devType := fs.String("type", "server", "设备类型：server（服务器）或 network（交换机、路由器、防火墙，通过 SSH 收集）")
+	enable := fs.Bool("enable", false, "网络设备：账号登录后在普通模式（提示符是 >）时加上，会提示输入 enable 密码")
+	hostKey := fs.String("host-key", "", "网络设备：期望的 SSH 主机密钥指纹（SHA256:…）；不填则首次连接时显示指纹")
 	out := fs.String("out", ".", "保存位置；会在其中按 [客户]/日期/设备 建文件夹")
 	customer := fs.String("customer", "", "客户名称，可以只写代号")
 	record := fs.String("record", "", "把接口往返保存到此文件（已去掉密码和令牌），失败时发给开发者")
 	legacy := fs.Bool("legacy-tls", false, "老设备：允许 TLS 1.0/1.1 和旧加密套件")
 	timeout := fs.Duration("timeout", 40*time.Minute, "整体超时")
 	fs.Usage = func() {
-		fmt.Fprint(fs.Output(), "用法：logdiag-collector collect --host <地址> --user <账号> [--brand <品牌>] [--record <文件>]\n\n"+
-			"让设备生成一键日志包并下载，旁边写一份 manifest.json。不清除日志、不重启设备。\n"+
-			"密码会提示输入，也可以放在环境变量 LOGDIAG_PASSWORD 里。按 Ctrl+C 取消时会退出会话，设备端的生成任务不受影响。\n\n选项：\n")
+		fmt.Fprint(fs.Output(), "用法：logdiag-collector collect --host <地址> --user <账号> [--brand <品牌>] [--record <文件>]\n"+
+			"      logdiag-collector collect --type network --host <地址> --user <账号> [--enable] [--record <文件>]\n\n"+
+			"服务器：让设备生成一键日志包并下载，旁边写一份 manifest.json。不清除日志、不重启设备。\n"+
+			"网络设备（思科、华为、新华三）：SSH 登录后执行 show tech-support 或 display diagnostic-information，\n"+
+			"连同日志缓冲区保存成文本，口令和团体名会被遮盖。只执行查看类命令、不改配置；诊断命令会让设备 CPU 短时升高，\n"+
+			"业务高峰期慎用。\n"+
+			"密码会提示输入，也可以放在环境变量 LOGDIAG_PASSWORD 里（enable 密码是 LOGDIAG_ENABLE_PASSWORD）。\n"+
+			"按 Ctrl+C 取消时会退出会话，设备端的生成任务不受影响。\n\n选项：\n")
 		fs.PrintDefaults()
 	}
 	if done, code := parseFlags(fs, args, stderr); done {
@@ -42,6 +50,20 @@ func runCollect(ctx context.Context, args []string, stdin io.Reader, stdout, std
 	if *host == "" || *user == "" {
 		fmt.Fprintln(stderr, "缺少 --host 或 --user。")
 		fs.Usage()
+		return 2
+	}
+	switch {
+	case *devType == "network" && *brand != "":
+		fmt.Fprintln(stderr, "网络设备按登录后的系统自动识别，不用 --brand。")
+		return 2
+	case *devType == "network":
+		return runNetCollect(ctx, netCollect{host: *host, user: *user, enable: *enable, hostKey: *hostKey,
+			out: *out, customer: *customer, record: *record, timeout: *timeout}, stdin, stdout, stderr)
+	case *devType != "server":
+		fmt.Fprintf(stderr, "--type 只能是 server 或 network，不认识 %q。\n", *devType)
+		return 2
+	case *enable || *hostKey != "":
+		fmt.Fprintln(stderr, "--enable 和 --host-key 只用于网络设备，请加 --type network。")
 		return 2
 	}
 	if *brand != "" {
