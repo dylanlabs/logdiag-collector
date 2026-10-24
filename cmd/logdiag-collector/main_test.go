@@ -5,6 +5,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -124,6 +125,42 @@ func TestProbeOutput(t *testing.T) {
 		"#LogService.CollectDiagnosticData  /redfish/v1/Systems/437XR1138R2/LogServices/DiagnosticLog/Actions/LogService.CollectDiagnosticData",
 		"#Manager.Dump  /redfish/v1/Managers/BMC/Actions/Oem/Contoso/Manager.Dump",
 		"已退出会话",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("输出里缺少 %q：\n%s", want, out.String())
+		}
+	}
+	if left := p.Remaining(); len(left) > 0 {
+		t.Errorf("没走到的请求：%v", left)
+	}
+}
+
+// TestProbeCollectionEntries：管理器上有厂商的收集入口时，probe 读出来列出动作和下载地址（只读）。
+func TestProbeCollectionEntries(t *testing.T) {
+	get := func(path, body string) *httprec.Interaction {
+		return &httprec.Interaction{
+			Request:  httprec.Request{Method: "GET", Path: path},
+			Response: httprec.Response{Status: 200, Header: http.Header{"Content-Type": {"application/json"}}, Body: httprec.Body{JSON: []byte(body)}},
+		}
+	}
+	p := httprec.NewReplayer(&httprec.Cassette{Interactions: []*httprec.Interaction{
+		get("/redfish/v1/Managers/1/Oem/Lenovo/ServiceData", `{"Actions": {"#LenovoServiceData.ExportFFDCData": {
+			"target": "/redfish/v1/Managers/1/Oem/Lenovo/ServiceData/Actions/LenovoServiceData.ExportFFDCData",
+			"DataCollectionType@Redfish.AllowableValues": ["ProcessorDump", "ServiceDataFile"]}}}`),
+		get("/redfish/v1/Managers/1/ActiveHealthSystem", `{"Links": {"RecentWeek": {"extref": "/ahsdata/x.ahs?from=2026-10-20&&to=2026-10-26"}}}`),
+	}})
+	c, _ := redfish.New("bmc.replay.test", redfish.Options{HTTPClient: &http.Client{Transport: p}})
+	m := &redfish.Resource{ODataID: "/redfish/v1/Managers/1", Oem: map[string]json.RawMessage{
+		"Lenovo": json.RawMessage(`{"ServiceData": {"@odata.id": "/redfish/v1/Managers/1/Oem/Lenovo/ServiceData"}}`),
+		"Hpe":    json.RawMessage(`{"Links": {"ActiveHealthSystem": {"@odata.id": "/redfish/v1/Managers/1/ActiveHealthSystem"}}}`),
+	}}
+	var out bytes.Buffer
+	describeCollection(context.Background(), c, m, &out)
+	for _, want := range []string{
+		"联想 ServiceData：/redfish/v1/Managers/1/Oem/Lenovo/ServiceData",
+		"#LenovoServiceData.ExportFFDCData",
+		"DataCollectionType 可选：ProcessorDump、ServiceDataFile",
+		"RecentWeek：/ahsdata/x.ahs?from=2026-10-20&&to=2026-10-26",
 	} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("输出里缺少 %q：\n%s", want, out.String())

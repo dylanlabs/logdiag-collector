@@ -29,6 +29,7 @@ func runCollect(ctx context.Context, args []string, stdin io.Reader, stdout, std
 	customer := fs.String("customer", "", "客户名称，可以只写代号")
 	record := fs.String("record", "", "把接口往返保存到此文件（已去掉密码和令牌），失败时发给开发者")
 	legacy := fs.Bool("legacy-tls", false, "老设备：允许 TLS 1.0/1.1 和旧加密套件")
+	acceptEULA := fs.Bool("accept-eula", false, "Dell：iDRAC 还没接受 SupportAssist 许可协议时代为接受（会改动设备设置）")
 	timeout := fs.Duration("timeout", 40*time.Minute, "整体超时")
 	fs.Usage = func() {
 		fmt.Fprint(fs.Output(), "用法：logdiag-collector collect --host <地址> --user <账号> [--brand <品牌>] [--record <文件>]\n\n"+
@@ -72,6 +73,7 @@ func runCollect(ctx context.Context, args []string, stdin io.Reader, stdout, std
 		User:       *user,
 		Password:   password,
 		Brand:      *brand,
+		AcceptEULA: *acceptEULA,
 		HTTPClient: conn.hc,
 		UserAgent:  buildinfo.UserAgent(),
 		Store:      store,
@@ -81,8 +83,7 @@ func runCollect(ctx context.Context, args []string, stdin io.Reader, stdout, std
 	conn.finish(*record, "真机录制：logdiag-collector collect", stdout, stderr)
 
 	if err != nil {
-		kind := redfish.KindOf(err)
-		fmt.Fprintf(stderr, "\n失败（%s）：%v\n%s\n", kind, err, kind.Hint())
+		fmt.Fprintf(stderr, "\n失败（%s）：%v\n%s\n", redfish.KindOf(err), err, redfish.Advice(err))
 		if *record == "" {
 			fmt.Fprintln(stderr, "加 --record diag.json 再运行一次，可把接口往返保存下来发给开发者。")
 		}

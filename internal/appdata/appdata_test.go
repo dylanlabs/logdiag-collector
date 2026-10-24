@@ -18,9 +18,13 @@ func TestSettings(t *testing.T) {
 	if got := s.Get(); got != Defaults() {
 		t.Errorf("没有设置文件时应为默认值：%+v", got)
 	}
+	if Defaults().AcceptEULA {
+		t.Error("代为接受 Dell 许可协议会改动设备设置，默认应关闭")
+	}
 
 	v := s.Get()
 	v.Concurrency = 4
+	v.AcceptEULA = true
 	v.OutputDir = filepath.Join(dir, "out")
 	if _, err := s.Set(v); err != nil {
 		t.Fatal(err)
@@ -41,7 +45,7 @@ func TestSettings(t *testing.T) {
 	}
 
 	again, _, err := OpenSettings(dir)
-	if err != nil || again.Get().Concurrency != 4 || again.Get().OutputDir != v.OutputDir {
+	if err != nil || again.Get().Concurrency != 4 || !again.Get().AcceptEULA || again.Get().OutputDir != v.OutputDir {
 		t.Errorf("重新打开应读到保存的设置：%+v %v", again.Get(), err)
 	}
 }

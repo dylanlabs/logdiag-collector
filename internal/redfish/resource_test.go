@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -114,5 +115,52 @@ func TestKindOfUnsupported(t *testing.T) {
 	err := fmt.Errorf("没有一键收集动作：%w", ErrUnsupported)
 	if KindOf(err) != KindUnsupported {
 		t.Errorf("KindOf = %s", KindOf(err))
+	}
+}
+
+func TestLinks(t *testing.T) {
+	var r Resource
+	json.Unmarshal([]byte(`{
+		"Links": {"Oem": {"Dell": {"DellLCService": {"@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/Oem/Dell/DellLCService"}}}},
+		"Oem": {
+			"Contoso": {"Links": {}},
+			"Hp": {"links": {"ActiveHealthSystem": {"@odata.id": "/redfish/v1/Managers/1/ActiveHealthSystem/"}}}
+		}
+	}`), &r)
+	if got := Link(r.Links, "Oem", "Dell", "DellLCService"); got != "/redfish/v1/Managers/iDRAC.Embedded.1/Oem/Dell/DellLCService" {
+		t.Errorf("Link = %q", got)
+	}
+	// 厂商键不写死，键名不区分大小写（Gen9 的 Oem.Hp.links）。
+	if got := r.OemLink("Links", "ActiveHealthSystem"); got != "/redfish/v1/Managers/1/ActiveHealthSystem/" {
+		t.Errorf("OemLink = %q", got)
+	}
+	if got := r.OemLink("ServiceData"); got != "" {
+		t.Errorf("没有的链接应为空：%q", got)
+	}
+	// iLO 的 AHS 下载地址放在 extref 里。
+	if got := Link(json.RawMessage(`{"RecentWeek": {"extref": "/ahsdata/x.ahs?from=2026-10-20&&to=2026-10-26"}}`), "RecentWeek"); got != "/ahsdata/x.ahs?from=2026-10-20&&to=2026-10-26" {
+		t.Errorf("extref = %q", got)
+	}
+	if Lookup(json.RawMessage(`"not an object"`), "a") != nil || Link(nil, "a") != "" {
+		t.Error("不是对象时应返回空")
+	}
+}
+
+func TestHintError(t *testing.T) {
+	base := &HTTPError{StatusCode: 400, MessageID: "IDRAC.2.8.SRV085"}
+	err := fmt.Errorf("触发：%w", WithHint(base, KindConsent, "先接受许可协议"))
+	if KindOf(err) != KindConsent || HintOf(err) != "先接受许可协议" || Advice(err) != "先接受许可协议" {
+		t.Errorf("KindOf = %s, HintOf = %q", KindOf(err), HintOf(err))
+	}
+	var he *HTTPError
+	if !errors.As(err, &he) || he.MessageID != "IDRAC.2.8.SRV085" {
+		t.Error("应能取到原来的 HTTPError")
+	}
+	// 不指定分类时按原错误判断。
+	if err := WithHint(fmt.Errorf("x：%w", ErrUnsupported), KindUnknown, "升级固件"); KindOf(err) != KindUnsupported || Advice(err) != "升级固件" {
+		t.Errorf("KindOf = %s, Advice = %q", KindOf(err), Advice(err))
+	}
+	if plain := errors.New("x"); HintOf(plain) != "" || Advice(plain) != KindUnknown.Hint() {
+		t.Error("没有专门建议时用分类的通用建议")
 	}
 }

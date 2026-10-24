@@ -71,10 +71,22 @@ type replay struct {
 // newReplay 用 testdata 里的录制记录代替设备，等待只记录不真的等。
 func newReplay(t *testing.T, name string) *replay {
 	t.Helper()
-	p, err := httprec.LoadReplayer(filepath.Join("testdata", name))
+	return newReplayFrom(t, loadCassette(t, name))
+}
+
+func loadCassette(t *testing.T, name string) *httprec.Cassette {
+	t.Helper()
+	c, err := httprec.Load(filepath.Join("testdata", name))
 	if err != nil {
 		t.Fatal(err)
 	}
+	return c
+}
+
+// newReplayFrom 用（测试里改过的）录制记录代替设备。
+func newReplayFrom(t *testing.T, c *httprec.Cassette) *replay {
+	t.Helper()
+	p := httprec.NewReplayer(c)
 	t.Cleanup(func() {
 		if left := p.Remaining(); len(left) > 0 {
 			t.Errorf("录制记录里还有没走到的请求：%v", left)
@@ -321,6 +333,12 @@ func TestDetect(t *testing.T) {
 		{"服务根 Vendor", &redfish.ServiceRoot{Vendor: "Inspur"}, &redfish.Resource{}, nil, "inspur"},
 		{"浪潮信息", nil, &redfish.Resource{Manufacturer: "IEIT SYSTEMS"}, nil, "inspur"},
 		{"管理器 OEM 键", &redfish.ServiceRoot{}, &redfish.Resource{}, &redfish.Resource{Oem: map[string]json.RawMessage{"xFusion": nil}}, "xfusion"},
+		{"Dell", nil, &redfish.Resource{Manufacturer: "Dell Inc."}, nil, "dell"},
+		{"联想服务根", &redfish.ServiceRoot{Vendor: "Lenovo"}, &redfish.Resource{}, nil, "lenovo"},
+		{"HPE", nil, &redfish.Resource{Manufacturer: "HPE"}, nil, "hpe"},
+		{"Gen9 制造商 HP", nil, &redfish.Resource{Manufacturer: "HP"}, nil, "hpe"},
+		{"Gen9 OEM 键 Hp", &redfish.ServiceRoot{}, &redfish.Resource{}, &redfish.Resource{Oem: map[string]json.RawMessage{"Hp": nil}}, "hpe"},
+		{"HP 要完整单词", nil, &redfish.Resource{Manufacturer: "CHPC Systems"}, nil, ""},
 		{"认不出", &redfish.ServiceRoot{Vendor: "Contoso"}, &redfish.Resource{Manufacturer: "Contoso"}, nil, ""},
 	}
 	for _, tc := range cases {

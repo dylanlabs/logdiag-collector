@@ -200,7 +200,7 @@ type ActionResult struct {
 // StartAction 调用动作（POST），返回需要轮询的任务地址。
 //
 // 任务地址依次取 Location 头、任务资源的 TaskMonitor、任务资源的 @odata.id。
-// Dell 的 Location 是 Job 地址，驱动可改为轮询 /redfish/v1/TaskService/Tasks/<JobID>。
+// Dell 的 Location 是 Job 地址（iDRAC10 是 TaskService 任务），完成时的响应头里才有文件地址。
 func (c *Client) StartAction(ctx context.Context, target string, body any) (*ActionResult, error) {
 	resp, err := c.Post(ctx, target, body)
 	if err != nil {

@@ -1,0 +1,463 @@
+{
+  "format": "logdiag.httprec/1",
+  "note": "合成：依据 Dell 官方脚本 SupportAssistCollectionLocalREDFISH.py v18 的 iDRAC9 流程——SupportAssistCollection 返回 202，Location 是 Job 地址；轮询 Job（JobState、PercentComplete、Message），完成时响应的 Location 头指向 sacollect.zip。动作参数的可选值取自 Dell OpenManage Ansible idrac_support_assist 的说明。服务标签在系统的 SKU 里。未经真机核对。",
+  "interactions": [
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1",
+            "@odata.type": "#ServiceRoot.v1_15_0.ServiceRoot",
+            "Id": "RootService",
+            "Name": "Root Service",
+            "RedfishVersion": "1.17.0",
+            "Vendor": "Dell",
+            "Product": "Integrated Dell Remote Access Controller",
+            "UUID": "00000000-0000-4000-8000-0000000000d9",
+            "Systems": {
+              "@odata.id": "/redfish/v1/Systems"
+            },
+            "Managers": {
+              "@odata.id": "/redfish/v1/Managers"
+            },
+            "Chassis": {
+              "@odata.id": "/redfish/v1/Chassis"
+            },
+            "SessionService": {
+              "@odata.id": "/redfish/v1/SessionService"
+            },
+            "Links": {
+              "Sessions": {
+                "@odata.id": "/redfish/v1/SessionService/Sessions"
+              }
+            },
+            "Oem": {
+              "Dell": {
+                "@odata.type": "#DellServiceRoot.v1_0_0.DellServiceRoot",
+                "IsBranded": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/redfish/v1/SessionService/Sessions",
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "UserName": "admin",
+            "Password": "REDACTED"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-Auth-Token": [
+            "REDACTED"
+          ],
+          "Location": [
+            "/redfish/v1/SessionService/Sessions/27"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/SessionService/Sessions/27",
+            "Id": "27",
+            "UserName": "admin"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers",
+            "Members": [
+              {
+                "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1"
+              }
+            ],
+            "Members@odata.count": 1
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers/iDRAC.Embedded.1"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1",
+            "@odata.type": "#Manager.v1_17_0.Manager",
+            "Id": "iDRAC.Embedded.1",
+            "Name": "Manager",
+            "ManagerType": "BMC",
+            "Model": "15G Monolithic",
+            "FirmwareVersion": "7.10.70.00",
+            "Actions": {
+              "#Manager.Reset": {
+                "target": "/redfish/v1/Managers/iDRAC.Embedded.1/Actions/Manager.Reset"
+              },
+              "Oem": {
+                "#OemManager.ExportSystemConfiguration": {
+                  "target": "/redfish/v1/Managers/iDRAC.Embedded.1/Actions/Oem/OemManager.ExportSystemConfiguration"
+                }
+              }
+            },
+            "LogServices": {
+              "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/LogServices"
+            },
+            "Links": {
+              "Oem": {
+                "Dell": {
+                  "DellLCService": {
+                    "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/Oem/Dell/DellLCService"
+                  },
+                  "DellJobService": {
+                    "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/Oem/Dell/DellJobService"
+                  }
+                }
+              }
+            },
+            "Oem": {
+              "Dell": {
+                "DelliDRACCard": {
+                  "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/Oem/Dell/DelliDRACCard/iDRAC.Embedded.1-1_0x23_IDRACinfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems",
+            "Members": [
+              {
+                "@odata.id": "/redfish/v1/Systems/System.Embedded.1"
+              }
+            ],
+            "Members@odata.count": 1
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems/System.Embedded.1"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems/System.Embedded.1",
+            "@odata.type": "#ComputerSystem.v1_20_0.ComputerSystem",
+            "Id": "System.Embedded.1",
+            "Name": "System",
+            "Manufacturer": "Dell Inc.",
+            "Model": "PowerEdge R750",
+            "SKU": "SYNTH01",
+            "SerialNumber": "CNIVCSYNTH0001",
+            "HostName": "esx01",
+            "PowerState": "On",
+            "BiosVersion": "1.13.2",
+            "LogServices": {
+              "@odata.id": "/redfish/v1/Systems/System.Embedded.1/LogServices"
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers/iDRAC.Embedded.1/Oem/Dell/DellLCService"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/Oem/Dell/DellLCService",
+            "@odata.type": "#DellLCService.v1_7_0.DellLCService",
+            "Id": "DellLCService",
+            "Name": "DellLCService",
+            "Description": "The DellLCService resource provides some actions to support Lifecycle Controller functionality.",
+            "Actions": {
+              "#DellLCService.SupportAssistCollection": {
+                "target": "/redfish/v1/Managers/iDRAC.Embedded.1/Oem/Dell/DellLCService/Actions/DellLCService.SupportAssistCollection",
+                "DataSelectorArrayIn@Redfish.AllowableValues": [
+                  "DebugLogs",
+                  "HWData",
+                  "OSAppData",
+                  "TTYLogs",
+                  "TelemetryReports"
+                ],
+                "Filter@Redfish.AllowableValues": [
+                  "No",
+                  "Yes"
+                ],
+                "ShareType@Redfish.AllowableValues": [
+                  "NFS",
+                  "CIFS",
+                  "HTTP",
+                  "HTTPS",
+                  "FTP",
+                  "Local"
+                ],
+                "Transmit@Redfish.AllowableValues": [
+                  "No",
+                  "Yes"
+                ]
+              },
+              "#DellLCService.SupportAssistGetEULAStatus": {
+                "target": "/redfish/v1/Managers/iDRAC.Embedded.1/Oem/Dell/DellLCService/Actions/DellLCService.SupportAssistGetEULAStatus"
+              },
+              "#DellLCService.GetRemoteServicesAPIStatus": {
+                "target": "/redfish/v1/Managers/iDRAC.Embedded.1/Oem/Dell/DellLCService/Actions/DellLCService.GetRemoteServicesAPIStatus"
+              },
+              "#DellLCService.SupportAssistAcceptEULA": {
+                "target": "/redfish/v1/Managers/iDRAC.Embedded.1/Oem/Dell/DellLCService/Actions/DellLCService.SupportAssistAcceptEULA"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/redfish/v1/Managers/iDRAC.Embedded.1/Oem/Dell/DellLCService/Actions/DellLCService.SupportAssistCollection",
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "DataSelectorArrayIn": [
+              "HWData",
+              "TTYLogs"
+            ],
+            "ShareType": "Local"
+          }
+        }
+      },
+      "response": {
+        "status": 202,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "Location": [
+            "/redfish/v1/Managers/iDRAC.Embedded.1/Jobs/JID_612345678901"
+          ]
+        },
+        "body": {
+          "json": {
+            "@Message.ExtendedInfo": [
+              {
+                "Message": "The request completed successfully.",
+                "MessageId": "Base.1.12.Success",
+                "Severity": "OK"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers/iDRAC.Embedded.1/Jobs/JID_612345678901"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/Jobs/JID_612345678901",
+            "@odata.type": "#DellJob.v1_5_0.DellJob",
+            "Id": "JID_612345678901",
+            "JobType": "SACollectHealthData",
+            "Name": "SupportAssist Collection",
+            "JobState": "Running",
+            "PercentComplete": 5,
+            "Message": "The SupportAssist Collection operation is started.",
+            "StartTime": "TIME_NOW",
+            "EndTime": null
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers/iDRAC.Embedded.1/Jobs/JID_612345678901"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/Jobs/JID_612345678901",
+            "@odata.type": "#DellJob.v1_5_0.DellJob",
+            "Id": "JID_612345678901",
+            "JobType": "SACollectHealthData",
+            "Name": "SupportAssist Collection",
+            "JobState": "Running",
+            "PercentComplete": 50,
+            "Message": "Collecting hardware data.",
+            "StartTime": "TIME_NOW",
+            "EndTime": null
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers/iDRAC.Embedded.1/Jobs/JID_612345678901"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "Location": [
+            "/redfish/v1/Dell/sacollect.zip"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/Jobs/JID_612345678901",
+            "@odata.type": "#DellJob.v1_5_0.DellJob",
+            "Id": "JID_612345678901",
+            "JobType": "SACollectHealthData",
+            "Name": "SupportAssist Collection",
+            "JobState": "Completed",
+            "PercentComplete": 100,
+            "Message": "The SupportAssist Collection and Transmission Operation is completed successfully.",
+            "StartTime": "TIME_NOW",
+            "EndTime": "TIME_NOW"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Dell/sacollect.zip"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/zip"
+          ]
+        },
+        "body": {
+          "base64": "UEsDBBQAAAAIAGBwWl1OpCd0QwAAAEUAAAAnAAAAVFNSMjAyNjEwMjYxNDAzMTFfU1lOVEgwMS9tZXRhZGF0YS5qc29uq1YKTi0qy0xODUlMV7JSCo70C/EwMFTSUfLNT0nNAYoE5JenFrmmpKcqBJmbGgAl/PJLUoHixZV5JRmpJZnJSrVcAFBLAwQUAAAACABgcFpdYVIYry0AAAA4AAAARQAAAFRTUjIwMjYxMDI2MTQwMzExX1NZTlRIMDEvdHNyL2hhcmR3YXJlL3N5c2luZm8vbGNmaWxlcy9jdXJyX2xjbG9nLnhtbLNxLUvNKym2swHTdsWVeSUZqSWZyQo5mWmpyZXJOakKOfnpNvoQaShdbMcFAFBLAQIUAxQAAAAIAGBwWl1OpCd0QwAAAEUAAAAnAAAAAAAAAAAAAACAAQAAAABUU1IyMDI2MTAyNjE0MDMxMV9TWU5USDAxL21ldGFkYXRhLmpzb25QSwECFAMUAAAACABgcFpdYVIYry0AAAA4AAAARQAAAAAAAAAAAAAAgAGIAAAAVFNSMjAyNjEwMjYxNDAzMTFfU1lOVEgwMS90c3IvaGFyZHdhcmUvc3lzaW5mby9sY2ZpbGVzL2N1cnJfbGNsb2cueG1sUEsFBgAAAAACAAIAyAAAABgBAAAAAA=="
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "path": "/redfish/v1/SessionService/Sessions/27"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@Message.ExtendedInfo": [
+              {
+                "Message": "The request completed successfully.",
+                "MessageId": "Base.1.12.Success",
+                "Severity": "OK"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
