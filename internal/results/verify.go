@@ -393,6 +393,8 @@ func decodeJSON(data []byte, v any) string {
 	err := d.Decode(v)
 	var te *json.UnmarshalTypeError
 	switch {
+	case errors.As(err, &te) && te.Field == "":
+		return "不是 JSON 对象"
 	case errors.As(err, &te):
 		return te.Field + " 的类型不对"
 	case err != nil:
@@ -403,17 +405,41 @@ func decodeJSON(data []byte, v any) string {
 	return ""
 }
 
+// peekSchema 先只读出 schema：更新的大版本可以改其他字段的类型，要先认出版本，再按第 1 版检查字段。
+func peekSchema(data []byte) (schema *string, bad string) {
+	var obj map[string]json.RawMessage
+	if bad := decodeJSON(data, &obj); bad != "" {
+		return nil, bad
+	}
+	if obj == nil {
+		return nil, "不是 JSON 对象"
+	}
+	raw, ok := obj["schema"]
+	if !ok || string(raw) == "null" {
+		return nil, ""
+	}
+	var s string
+	if json.Unmarshal(raw, &s) != nil {
+		return nil, "schema 的类型不对"
+	}
+	return &s, ""
+}
+
 func parsePackage(data []byte) (pkg *Package, code, msg string) {
+	schema, bad := peekSchema(data)
+	if bad != "" {
+		return nil, CodePackageInvalid, "package.json " + bad
+	}
+	if code, msg := schemaProblem(schema, PackageSchema, CodePackageInvalid); code != "" {
+		return nil, code, msg
+	}
 	var r rawPackage
 	if bad := decodeJSON(data, &r); bad != "" {
 		return nil, CodePackageInvalid, "package.json " + bad
 	}
-	if code, msg := schemaProblem(r.Schema, PackageSchema, CodePackageInvalid); code != "" {
-		return nil, code, msg
-	}
 	var c checker
 	pkg = &Package{
-		Schema:    *r.Schema,
+		Schema:    *schema,
 		PackageID: c.match(r.PackageID, uuidRE, "package_id"),
 		CreatedAt: c.match(r.CreatedAt, timeRE, "created_at"),
 		Tool:      c.tool(r.Tool, "tool"),
@@ -445,16 +471,20 @@ func parsePackage(data []byte) (pkg *Package, code, msg string) {
 }
 
 func parseManifest(data []byte) (m *collect.Manifest, code, msg string) {
+	schema, bad := peekSchema(data)
+	if bad != "" {
+		return nil, CodeManifestInvalid, bad
+	}
+	if code, msg := schemaProblem(schema, collect.ManifestSchema, CodeManifestInvalid); code != "" {
+		return nil, code, msg
+	}
 	var r rawManifest
 	if bad := decodeJSON(data, &r); bad != "" {
 		return nil, CodeManifestInvalid, bad
 	}
-	if code, msg := schemaProblem(r.Schema, collect.ManifestSchema, CodeManifestInvalid); code != "" {
-		return nil, code, msg
-	}
 	var c checker
 	m = &collect.Manifest{
-		Schema:      *r.Schema,
+		Schema:      *schema,
 		Tool:        c.tool(r.Tool, "tool"),
 		CollectedAt: c.match(r.CollectedAt, timeRE, "collected_at"),
 		Customer:    c.str(r.Customer, "customer"),

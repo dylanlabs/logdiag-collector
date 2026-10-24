@@ -84,7 +84,7 @@ LogDiag-示例客户-20261120-1430-5d0c8e1a.zip
 1. 打开 zip。不是完整的 zip：结果为 `not_zip`。
 2. 找 `package.json`：在根目录；或者所有条目都在同一个顶层文件夹 X 里，并且有 `X/package.json`（重新压缩过的包）。都没有：结果为 `not_package`，不是离线上传包，照旧按普通日志处理。
 3. 读 `package.json`（不超过 16 MiB）。出现了不止一个、不是 JSON 对象、`schema` 不对、或者字段不全、类型不对，都只报一个问题，位置是 `package.json`，并停止检查：
-   - `schema` 是 `logdiag.package/<数字>` 但不是 `logdiag.package/1`：`schema_unsupported`。
+   - 先只看 `schema`：是 `logdiag.package/<数字>` 但不是 `logdiag.package/1`，报 `schema_unsupported`。更新的大版本可以改其他字段的类型，所以要先认版本、再按第 1 版查字段。
    - 其他情况：`package_invalid`。字段要求：`package_id` 是 UUID，`created_at` 是带时区的时间，`tool.name`、`tool.version`、`customer` 是字符串，`batch_ids` 是 UUID 数组，`devices` 是非空数组；每台设备有字符串 `dir`、符合编码格式的 `log_type`、数组 `files`；每个文件有字符串 `name`、不小于 0 的整数 `size`、64 位小写十六进制的 `sha256`、`main`/`extra`/`manifest` 之一的 `role`。
 4. 按 `devices` 的顺序检查每台设备（设备文件夹记作 D）：
    1. D 不是安全的名字：`path_invalid`（位置 D），跳过这台设备。
@@ -92,7 +92,7 @@ LogDiag-示例客户-20261120-1430-5d0c8e1a.zip
    3. 按 `files` 的顺序检查每个文件（文件名记作 N，位置 D/N）：N 不是安全的名字，`path_invalid`；N 在这台设备里重复，`duplicate_path`；zip 里没有 D/N（或只有同名文件夹），`file_missing`；zip 里有不止一个 D/N，`duplicate_path`；大小不对，`size_mismatch`；SHA-256 不对或读出错（数据损坏），`checksum_mismatch`。一个文件只报第一个问题。
    4. `role` 为 `manifest` 的条目不是恰好一个、或者名字不是 `manifest.json`：`manifest_missing`（位置 D）。
    5. 没有 `role` 为 `main` 的条目：`main_missing`（位置 D）。这两条按 `package.json` 列出的条目算，不管文件本身有没有问题。
-   6. `manifest.json` 存在且大小、SHA-256 都对时，读它（不超过 1 MiB）：大版本更新，`schema_unsupported`；不是 JSON 对象、`schema` 不对、字段不全或类型不对，`manifest_invalid`（字段要求见 manifest 的 schema：必填字段齐全，时间带时区，`batch_id` 是 UUID，`device.type` 在枚举里，`log.type` 符合编码格式，`files` 非空、每个文件 `size` 至少为 1、`role` 是 `main` 或 `extra`、至少一个 `main`，`redaction.applied` 是布尔值）；和 `package.json` 对不上，`manifest_mismatch`。位置都是 D/manifest.json。对得上指：`log.type` 等于 `log_type`，`customer` 相同，`batch_id` 在 `batch_ids` 里，`files` 和 `package.json` 里这台设备除 `manifest.json` 以外的条目一一对应（名字、大小、SHA-256、role 都相同，不管顺序）。
+   6. `manifest.json` 存在且大小、SHA-256 都对时，读它（不超过 1 MiB）：大版本更新，`schema_unsupported`（同样先看 `schema` 再查字段）；不是 JSON 对象、`schema` 不对、字段不全或类型不对，`manifest_invalid`（字段要求见 manifest 的 schema：必填字段齐全，时间带时区，`batch_id` 是 UUID，`device.type` 在枚举里，`log.type` 符合编码格式，`files` 非空、每个文件 `size` 至少为 1、`role` 是 `main` 或 `extra`、至少一个 `main`，`redaction.applied` 是布尔值）；和 `package.json` 对不上，`manifest_mismatch`。位置都是 D/manifest.json。对得上指：`log.type` 等于 `log_type`，`customer` 相同，`batch_id` 在 `batch_ids` 里，`files` 和 `package.json` 里这台设备除 `manifest.json` 以外的条目一一对应（名字、大小、SHA-256、role 都相同，不管顺序）。
 
 安全的名字：非空，UTF-8 编码不超过 255 字节，不是 `.` 或 `..`，不含 `/`、`\`、`:` 和控制字符（小于 0x20）。几个格式的正则：
 
