@@ -1,0 +1,411 @@
+{
+  "format": "logdiag.httprec/1",
+  "note": "合成：依据联想官方 python-redfish-lenovo 的 lenovo_export_ffdc_data.py（默认 Debuglog → DataCollectionType=ProcessorDump）和《XCC2 REST API》的 LenovoServiceData / Collect BMC Service Data 页面——ExportFFDCData 返回任务（@odata.id 和 TaskMonitor），轮询任务资源到 Completed，Oem.Lenovo.FFDCForDownloading.Path 是 /imm_dump/FFDC/ 下的 .tzz，带令牌下载。未经真机核对。",
+  "interactions": [
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/",
+            "@odata.type": "#ServiceRoot.v1_11_0.ServiceRoot",
+            "Id": "RootService",
+            "RedfishVersion": "1.15.0",
+            "Vendor": "Lenovo",
+            "Product": "ThinkSystem SR650",
+            "Systems": {
+              "@odata.id": "/redfish/v1/Systems"
+            },
+            "Managers": {
+              "@odata.id": "/redfish/v1/Managers"
+            },
+            "SessionService": {
+              "@odata.id": "/redfish/v1/SessionService"
+            },
+            "Links": {
+              "Sessions": {
+                "@odata.id": "/redfish/v1/SessionService/Sessions"
+              }
+            },
+            "Oem": {
+              "Lenovo": {}
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/redfish/v1/SessionService/Sessions",
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "UserName": "admin",
+            "Password": "REDACTED"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-Auth-Token": [
+            "REDACTED"
+          ],
+          "Location": [
+            "/redfish/v1/SessionService/Sessions/1"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/SessionService/Sessions/1",
+            "Id": "1",
+            "UserName": "admin"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers",
+            "Members": [
+              {
+                "@odata.id": "/redfish/v1/Managers/1"
+              }
+            ],
+            "Members@odata.count": 1
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers/1"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers/1",
+            "@odata.type": "#Manager.v1_10_0.Manager",
+            "Id": "1",
+            "Name": "Manager",
+            "ManagerType": "BMC",
+            "Model": "Lenovo XClarity Controller",
+            "FirmwareVersion": "TEI3A4P 9.92",
+            "Actions": {
+              "#Manager.Reset": {
+                "target": "/redfish/v1/Managers/1/Actions/Manager.Reset"
+              }
+            },
+            "LogServices": {
+              "@odata.id": "/redfish/v1/Managers/1/LogServices"
+            },
+            "Oem": {
+              "Lenovo": {
+                "@odata.type": "#LenovoManager.v1_0_0.LenovoManager",
+                "ServiceData": {
+                  "@odata.id": "/redfish/v1/Managers/1/Oem/Lenovo/ServiceData"
+                },
+                "ServerProfile": {
+                  "@odata.id": "/redfish/v1/Managers/1/Oem/Lenovo/ServerProfile"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems",
+            "Members": [
+              {
+                "@odata.id": "/redfish/v1/Systems/1"
+              }
+            ],
+            "Members@odata.count": 1
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems/1"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems/1",
+            "Id": "1",
+            "Manufacturer": "Lenovo",
+            "Model": "ThinkSystem SR650",
+            "SKU": "7X06CTO1WW",
+            "SerialNumber": "J30SYNTH",
+            "HostName": "sap01",
+            "PowerState": "On",
+            "LogServices": {
+              "@odata.id": "/redfish/v1/Systems/1/LogServices"
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers/1/Oem/Lenovo/ServiceData"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers/1/Oem/Lenovo/ServiceData",
+            "@odata.type": "#LenovoServiceData.v1_0_0.LenovoServiceData",
+            "Id": "ServiceData",
+            "Name": "Service Data",
+            "FileTransferTimeout": 600,
+            "ExportingSchemes": "TFTP, SFTP",
+            "IsScreenAvailable": false,
+            "DataCollectionType": "ProcessorDump, ServiceDataFile, BootPOSTDump, Mini-log",
+            "Actions": {
+              "#LenovoServiceData.ExportFFDCData": {
+                "target": "/redfish/v1/Managers/1/Oem/Lenovo/ServiceData/Actions/LenovoServiceData.ExportFFDCData",
+                "title": "ExportFFDCData",
+                "DataCollectionType@Redfish.AllowableValues": [
+                  "ProcessorDump",
+                  "ServiceDataFile",
+                  "BootPOSTDump",
+                  "Mini-log"
+                ]
+              },
+              "#LenovoServiceData.ExportLatestOSFailureScreen": {
+                "target": "/redfish/v1/Managers/1/Oem/Lenovo/ServiceData/Actions/LenovoServiceData.ExportLatestOSFailureScreen"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/redfish/v1/Managers/1/Oem/Lenovo/ServiceData/Actions/LenovoServiceData.ExportFFDCData",
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "DataCollectionType": "ProcessorDump",
+            "InitializationNeeded": true
+          }
+        }
+      },
+      "response": {
+        "status": 202,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "Location": [
+            "/redfish/v1/TaskService/20d4a06c-1d5b-467a-9513-0d511b7c6068"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/TaskService/Tasks/c7bc86f4-c241-4632-a58a-d83e94e5aecd",
+            "@odata.type": "#Task.v1_4_3.Task",
+            "Id": "c7bc86f4-c241-4632-a58a-d83e94e5aecd",
+            "Name": "Export FFDC data",
+            "TaskMonitor": "/redfish/v1/TaskService/20d4a06c-1d5b-467a-9513-0d511b7c6068",
+            "TaskState": "New",
+            "TaskStatus": "OK",
+            "PercentComplete": 0,
+            "Messages": []
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/TaskService/Tasks/c7bc86f4-c241-4632-a58a-d83e94e5aecd"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/TaskService/Tasks/c7bc86f4-c241-4632-a58a-d83e94e5aecd",
+            "@odata.type": "#Task.v1_4_3.Task",
+            "Id": "c7bc86f4-c241-4632-a58a-d83e94e5aecd",
+            "Name": "Export FFDC data",
+            "TaskMonitor": "/redfish/v1/TaskService/20d4a06c-1d5b-467a-9513-0d511b7c6068",
+            "TaskState": "Running",
+            "TaskStatus": "OK",
+            "PercentComplete": 40,
+            "Messages": []
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/TaskService/Tasks/c7bc86f4-c241-4632-a58a-d83e94e5aecd"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/TaskService/Tasks/c7bc86f4-c241-4632-a58a-d83e94e5aecd",
+            "@odata.type": "#Task.v1_4_3.Task",
+            "Id": "c7bc86f4-c241-4632-a58a-d83e94e5aecd",
+            "Name": "Export FFDC data",
+            "TaskMonitor": "/redfish/v1/TaskService/20d4a06c-1d5b-467a-9513-0d511b7c6068",
+            "TaskState": "Running",
+            "TaskStatus": "OK",
+            "PercentComplete": 85,
+            "Messages": []
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/TaskService/Tasks/c7bc86f4-c241-4632-a58a-d83e94e5aecd"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/TaskService/Tasks/c7bc86f4-c241-4632-a58a-d83e94e5aecd",
+            "@odata.type": "#Task.v1_4_3.Task",
+            "Id": "c7bc86f4-c241-4632-a58a-d83e94e5aecd",
+            "Name": "Export FFDC data",
+            "TaskMonitor": "/redfish/v1/TaskService/20d4a06c-1d5b-467a-9513-0d511b7c6068",
+            "TaskState": "Completed",
+            "TaskStatus": "OK",
+            "PercentComplete": 100,
+            "Messages": [
+              {
+                "MessageId": "TaskEvent.1.0.TaskCompletedOK",
+                "Message": "The task with id c7bc86f4-c241-4632-a58a-d83e94e5aecd has completed.",
+                "Severity": "OK"
+              }
+            ],
+            "Oem": {
+              "Lenovo": {
+                "FFDCForDownloading": {
+                  "Path": "/imm_dump/FFDC/7X06CTO1WW_J30SYNTH_xcc_20261026-140311.tzz",
+                  "Time": "2026-10-26T14:03:11+08:00"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/imm_dump/FFDC/7X06CTO1WW_J30SYNTH_xcc_20261026-140311.tzz"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/octet-stream"
+          ]
+        },
+        "body": {
+          "base64": "H4sIAAAAAAAC/+3VzUoDMRSG4ay9ilzAtJ78TAbcVkrrQhcWqksZJ21BJjATi969sRuhC11Zf3gfAgeSTQLnO4nxsT3f9TFN80tW30OK4P2hFsdVxDfK1DY0ztTOl31jrTVKizqB5zE/DOUqQ0qfvv+r8z9qfO3ztsu7Vs/nlzMd06CbOwmz1Y1Zr/WVk9v769XiTOF/iu/57/Zdn5/SZtqO+5/If+2O8u8kWPJ/CqayYsPEyMQGbfyFSFnVsnwI1cdoOPQHMwAAAAAAAAAAAAAAAOA3egNjyFDQACgAAA=="
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "path": "/redfish/v1/SessionService/Sessions/1"
+      },
+      "response": {
+        "status": 204
+      }
+    }
+  ]
+}

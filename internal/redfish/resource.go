@@ -17,6 +17,7 @@ type Resource struct {
 	Manufacturer    string
 	Model           string
 	SerialNumber    string
+	SKU             string // Dell 的服务标签在这里，SerialNumber 是主板序列号
 	HostName        string
 	ManagerType     string
 	FirmwareVersion string
@@ -24,7 +25,66 @@ type Resource struct {
 	PowerState      string
 	Actions         json.RawMessage
 	LogServices     ODataID
+	Links           json.RawMessage
 	Oem             map[string]json.RawMessage
+}
+
+// OemLink 在各厂商的 Oem 段里按 path 查找链接，例如 OemLink("Links", "ActiveHealthSystem")。
+// 厂商键不写死：HPE 新固件是 Hpe，Gen9 是 Hp。
+func (r *Resource) OemLink(path ...string) string {
+	keys := make([]string, 0, len(r.Oem))
+	for k := range r.Oem {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	for _, k := range keys {
+		if link := Link(r.Oem[k], path...); link != "" {
+			return link
+		}
+	}
+	return ""
+}
+
+// Lookup 按键名逐层查找 JSON 对象里的值，找不到时返回 nil。
+// 键名先按原样匹配，再不区分大小写匹配：老固件有 links、Links 两种写法。
+func Lookup(raw json.RawMessage, path ...string) json.RawMessage {
+	for _, key := range path {
+		var obj map[string]json.RawMessage
+		if json.Unmarshal(raw, &obj) != nil {
+			return nil
+		}
+		v, ok := obj[key]
+		if !ok {
+			for k, kv := range obj {
+				if strings.EqualFold(k, key) {
+					v, ok = kv, true
+					break
+				}
+			}
+		}
+		if !ok {
+			return nil
+		}
+		raw = v
+	}
+	return raw
+}
+
+// Link 返回 Lookup 找到的链接对象里的地址：Redfish 的 @odata.id，iLO 的 extref，或老接口的 href。
+func Link(raw json.RawMessage, path ...string) string {
+	v := Lookup(raw, path...)
+	if v == nil {
+		return ""
+	}
+	var link struct {
+		ODataID string `json:"@odata.id"`
+		Extref  string `json:"extref"`
+		Href    string `json:"href"`
+	}
+	if json.Unmarshal(v, &link) != nil {
+		return ""
+	}
+	return firstNonEmpty(link.ODataID, link.Extref, link.Href)
 }
 
 // Members 读取集合，返回成员地址。

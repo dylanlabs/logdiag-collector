@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// 设置：保存位置、并发数、超时、诊断记录、OS 巡检模块；数据文件夹、密码加密方式、关于。
+// 设置：保存位置、并发数、超时、诊断记录、Dell 许可协议、OS 巡检模块；数据文件夹、密码加密方式、关于。
 // 每一项改完立即保存。
 
 import { h, button, api, bus, toast, showError, input, checkbox, pageHead, card, soon, tag } from '../lib.js';
@@ -58,6 +58,7 @@ export function mount(root) {
   const concurrency = number('同时收集的台数', 1, 32, 'concurrency');
   const timeout = number('单台超时', 5, 180, 'timeout_minutes');
   const record = checkbox('保留诊断记录', false, { onchange: (e) => save({ record: e.target.checked }) });
+  const acceptEULA = checkbox('代为接受 Dell SupportAssist 许可协议', false, { onchange: (e) => save({ accept_eula: e.target.checked }) });
   const osModule = checkbox('在导航里显示“OS 巡检”', false, { onchange: (e) => save({ os_module: e.target.checked }) });
 
   function fill() {
@@ -65,6 +66,7 @@ export function mount(root) {
     concurrency.value = s().concurrency;
     timeout.value = s().timeout_minutes;
     record.querySelector('input').checked = s().record;
+    acceptEULA.querySelector('input').checked = s().accept_eula;
     osModule.querySelector('input').checked = s().os_module;
     btnDefaultDir.disabled = !defaults || defaults.output_dir === s().output_dir;
   }
@@ -85,7 +87,9 @@ export function mount(root) {
         h('div', { class: 'inline' }, timeout, h('span', { class: 'muted', text: '分钟（5–180）' })),
         hint('设备生成日志包较慢时可以调大。超时后只停止本机等待，不会中断设备上的任务。')),
       row('诊断记录', record,
-        hint('记录收集时和设备的交互，已去掉密码、令牌、Cookie 和设备 IP；收集失败时可以在“日志收集”页导出，附在反馈里。只保存在内存里，程序退出后清除。'))),
+        hint('记录收集时和设备的交互，已去掉密码、令牌、Cookie 和设备 IP；收集失败时可以在“日志收集”页导出，附在反馈里。只保存在内存里，程序退出后清除。')),
+      row('Dell 许可协议', acceptEULA,
+        hint('iDRAC 第一次导出 SupportAssist 收集包前，要接受 Dell 的 SupportAssist 许可协议（EULA）。勾选后遇到还没接受的 iDRAC，由本工具代为接受，等同于在 iDRAC 网页上点“接受”，iDRAC 会记下接受的账号和时间。不勾选时这类设备会收集失败，并提示你先去接受。'))),
     card('功能模块',
       row('OS 巡检', osModule,
         h('div', { class: 'inline' }, tag('计划 1.0 提供', 'blue'), h('span', { class: 'field-hint', text: '不需要时可以关掉，导航里就不再显示。' })))),

@@ -32,6 +32,7 @@ const (
 	KindTimeout          // 超时
 	KindTaskFailed       // 设备端任务失败
 	KindCanceled         // 用户取消
+	KindConsent          // 需要用户确认，例如 Dell 的 SupportAssist 许可协议
 )
 
 var kindText = map[Kind][2]string{
@@ -44,6 +45,7 @@ var kindText = map[Kind][2]string{
 	KindTimeout:     {"超时", "设备生成日志较慢，可调大超时时间后重试。"},
 	KindTaskFailed:  {"设备端任务失败", "查看设备返回的信息；如反复失败，导出诊断记录发给开发者。"},
 	KindCanceled:    {"已取消", "设备端可能仍在生成，稍后可再次收集。"},
+	KindConsent:     {"需要确认", "按提示确认后重试。"},
 }
 
 // String 返回分类名称。
@@ -58,12 +60,15 @@ func KindOf(err error) Kind {
 		return KindUnknown
 	}
 	var (
+		hintErr *HintError
 		httpErr *HTTPError
 		taskErr *TaskError
 		netErr  net.Error
 		urlErr  *url.Error
 	)
 	switch {
+	case errors.As(err, &hintErr) && hintErr.Kind != KindUnknown:
+		return hintErr.Kind
 	case errors.Is(err, ErrTimeout), errors.Is(err, context.DeadlineExceeded):
 		return KindTimeout
 	case errors.Is(err, context.Canceled):
@@ -92,6 +97,38 @@ func KindOf(err error) Kind {
 		return KindNetwork
 	}
 	return KindUnknown
+}
+
+// HintError 给错误附上专门的处理建议，代替分类的通用建议。
+type HintError struct {
+	Err  error
+	Kind Kind // 为 KindUnknown 时按 Err 判断分类
+	Hint string
+}
+
+func (e *HintError) Error() string { return e.Err.Error() }
+func (e *HintError) Unwrap() error { return e.Err }
+
+// WithHint 给 err 附上处理建议；kind 为 KindUnknown 时分类不变。
+func WithHint(err error, kind Kind, hint string) error {
+	return &HintError{Err: err, Kind: kind, Hint: hint}
+}
+
+// HintOf 返回错误附带的专门建议，没有时为空。
+func HintOf(err error) string {
+	var e *HintError
+	if errors.As(err, &e) {
+		return e.Hint
+	}
+	return ""
+}
+
+// Advice 返回给用户的处理建议：有专门建议时用它，否则用分类的通用建议。
+func Advice(err error) string {
+	if h := HintOf(err); h != "" {
+		return h
+	}
+	return KindOf(err).Hint()
 }
 
 // HTTPError 是设备返回的 4xx/5xx 响应。

@@ -1,0 +1,381 @@
+{
+  "format": "logdiag.httprec/1",
+  "note": "合成：依据联想官方 lenovo_export_ffdc_data.py 的 V4 分支——管理器没有 Oem.Lenovo.ServiceData 时用系统 LogServices/DiagnosticLog 的 LogService.CollectDiagnosticData（DiagnosticDataType=Manager），触发响应体里有任务 @odata.id 和 Location（日志条目），任务完成后读条目的 AdditionalDataURI 下载。未经真机核对。",
+  "interactions": [
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/",
+            "@odata.type": "#ServiceRoot.v1_11_0.ServiceRoot",
+            "Id": "RootService",
+            "RedfishVersion": "1.15.0",
+            "Vendor": "Lenovo",
+            "Product": "ThinkSystem SR650 V4",
+            "Systems": {
+              "@odata.id": "/redfish/v1/Systems"
+            },
+            "Managers": {
+              "@odata.id": "/redfish/v1/Managers"
+            },
+            "SessionService": {
+              "@odata.id": "/redfish/v1/SessionService"
+            },
+            "Links": {
+              "Sessions": {
+                "@odata.id": "/redfish/v1/SessionService/Sessions"
+              }
+            },
+            "Oem": {
+              "Lenovo": {}
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/redfish/v1/SessionService/Sessions",
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "UserName": "admin",
+            "Password": "REDACTED"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-Auth-Token": [
+            "REDACTED"
+          ],
+          "Location": [
+            "/redfish/v1/SessionService/Sessions/5"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/SessionService/Sessions/5",
+            "Id": "5",
+            "UserName": "admin"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers",
+            "Members": [
+              {
+                "@odata.id": "/redfish/v1/Managers/1"
+              }
+            ],
+            "Members@odata.count": 1
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers/1"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers/1",
+            "Id": "1",
+            "Name": "Manager",
+            "ManagerType": "BMC",
+            "FirmwareVersion": "ESX310C 1.40",
+            "Actions": {
+              "#Manager.Reset": {
+                "target": "/redfish/v1/Managers/1/Actions/Manager.Reset"
+              }
+            },
+            "Oem": {
+              "Lenovo": {
+                "@odata.type": "#LenovoManager.v1_0_0.LenovoManager"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems",
+            "Members": [
+              {
+                "@odata.id": "/redfish/v1/Systems/1"
+              }
+            ],
+            "Members@odata.count": 1
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems/1"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems/1",
+            "Id": "1",
+            "Manufacturer": "Lenovo",
+            "Model": "ThinkSystem SR650 V4",
+            "SKU": "7DGCCTO1WW",
+            "SerialNumber": "J90SYNTH",
+            "PowerState": "On",
+            "LogServices": {
+              "@odata.id": "/redfish/v1/Systems/1/LogServices"
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems/1/LogServices/DiagnosticLog"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems/1/LogServices/DiagnosticLog",
+            "@odata.type": "#LogService.v1_5_0.LogService",
+            "Id": "DiagnosticLog",
+            "Name": "Diagnostic Log Service",
+            "Entries": {
+              "@odata.id": "/redfish/v1/Systems/1/LogServices/DiagnosticLog/Entries"
+            },
+            "Actions": {
+              "#LogService.CollectDiagnosticData": {
+                "target": "/redfish/v1/Systems/1/LogServices/DiagnosticLog/Actions/LogService.CollectDiagnosticData",
+                "DiagnosticDataType@Redfish.AllowableValues": [
+                  "Manager",
+                  "OEM"
+                ],
+                "OEMDiagnosticDataType@Redfish.AllowableValues": [
+                  "MiniLog"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/redfish/v1/Systems/1/LogServices/DiagnosticLog/Actions/LogService.CollectDiagnosticData",
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "DiagnosticDataType": "Manager"
+          }
+        }
+      },
+      "response": {
+        "status": 202,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "Location": [
+            "/redfish/v1/TaskService/TaskMonitors/7"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/TaskService/Tasks/7",
+            "@odata.type": "#Task.v1_6_0.Task",
+            "Id": "7",
+            "TaskState": "Running",
+            "TaskMonitor": "/redfish/v1/TaskService/TaskMonitors/7",
+            "PercentComplete": 0,
+            "Location": "/redfish/v1/Systems/1/LogServices/DiagnosticLog/Entries/1"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/TaskService/Tasks/7"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/TaskService/Tasks/7",
+            "Id": "7",
+            "TaskState": "Running",
+            "PercentComplete": 60,
+            "Messages": [
+              {
+                "MessageId": "TaskEvent.1.0.TaskProgressChanged",
+                "Message": "Collecting FFDC data."
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/TaskService/Tasks/7"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/TaskService/Tasks/7",
+            "Id": "7",
+            "TaskState": "Completed",
+            "TaskStatus": "OK",
+            "PercentComplete": 100,
+            "Messages": [
+              {
+                "MessageId": "TaskEvent.1.0.TaskCompletedOK",
+                "Message": "The task with id 7 has completed."
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems/1/LogServices/DiagnosticLog/Entries/1"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems/1/LogServices/DiagnosticLog/Entries/1",
+            "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+            "Id": "1",
+            "Name": "FFDC",
+            "EntryType": "Oem",
+            "DiagnosticDataType": "Manager",
+            "AdditionalDataURI": "/imm_dump/FFDC/7DGCCTO1WW_J90SYNTH_xcc_20261026-140311.tzz",
+            "AdditionalDataSizeBytes": 162,
+            "Created": "2026-10-26T14:03:11+08:00"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/imm_dump/FFDC/7DGCCTO1WW_J90SYNTH_xcc_20261026-140311.tzz"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/octet-stream"
+          ]
+        },
+        "body": {
+          "base64": "H4sIAAAAAAAC/+3PsQrCMBSF4cw+RZ5AkzRtcW6p4qCDheIo1dAuDbQR9O0Njg46KQr/txy4ZznXuVO76Afn5+EaxGeoKLP2kdFzKmVzoVOT5YlOExvv2hijhVTiCy5TOI5xyuj9y//f9X9qug2hO4e+lVVVFtL5UeblqijqnW4auVmq/WFbr2cCAAAAAAAAAAAAAAAAAPBb7lQTLLEAKAAA"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "path": "/redfish/v1/SessionService/Sessions/5"
+      },
+      "response": {
+        "status": 204
+      }
+    }
+  ]
+}

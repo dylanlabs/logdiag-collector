@@ -61,11 +61,18 @@ func (s *Store) batchID() string {
 	return s.BatchID
 }
 
+// Attachment 是和主日志包一起保存的附带文件，例如 HPE 的 IML、IEL 日志，manifest 里 role 为 extra。
+type Attachment struct {
+	Name string
+	Data []byte
+}
+
 // Save 创建设备文件夹，由 fetch 把设备上的文件写进来，校验后写 manifest.json。
-// name 是设备给的文件名，例如 dump_info.tar.gz。
+// name 是设备给的文件名，例如 dump_info.tar.gz。extras 是已经读到内存里的附带文件。
 //
 // 下载失败时删除文件夹；下载完整但格式校验失败时保留文件（便于排查）、不写 manifest，并返回错误。
-func (j *Job) Save(log Log, name string, fetch func(w io.Writer) error) (*Result, error) {
+// 附带文件写不进去时跳过，在进度里说明，不影响主日志包。
+func (j *Job) Save(log Log, name string, fetch func(w io.Writer) error, extras ...Attachment) (*Result, error) {
 	s := j.Store
 	start := s.now()
 	dir, err := s.deviceDir(j.Device, log, start)
@@ -89,6 +96,21 @@ func (j *Job) Save(log Log, name string, fetch func(w io.Writer) error) (*Result
 	if err := verifyArchive(path, size); err != nil {
 		return nil, fmt.Errorf("文件已保存到 %s，但校验没有通过：%w", path, err)
 	}
+	files := []File{{Name: name, Size: size, SHA256: sum, Role: "main"}}
+	used := map[string]bool{strings.ToLower(name): true, "manifest.json": true}
+	for _, a := range extras {
+		n := safeFileName(a.Name)
+		if len(a.Data) == 0 || used[strings.ToLower(n)] {
+			continue
+		}
+		if err := os.WriteFile(filepath.Join(dir, n), a.Data, 0o644); err != nil {
+			j.Report(StageVerify, -1, "附带文件 "+n+" 没有保存："+err.Error())
+			continue
+		}
+		used[strings.ToLower(n)] = true
+		h := sha256.Sum256(a.Data)
+		files = append(files, File{Name: n, Size: int64(len(a.Data)), SHA256: hex.EncodeToString(h[:]), Role: "extra"})
+	}
 
 	m := Manifest{
 		Schema:      ManifestSchema,
@@ -106,7 +128,7 @@ func (j *Job) Save(log Log, name string, fetch func(w io.Writer) error) (*Result
 			Controller: j.Device.Controller,
 		},
 		Log:   log,
-		Files: []File{{Name: name, Size: size, SHA256: sum, Role: "main"}},
+		Files: files,
 	}
 	data, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
@@ -181,32 +203,50 @@ func (c *countWriter) Write(p []byte) (int, error) {
 }
 
 // verifyArchive 按扩展名把压缩包完整读一遍，发现截断或损坏。
+// 扩展名认不出时（例如联想的 .tzz）看文件开头：是 gzip 或 zip 就按对应格式检查，其他格式不检查。
 func verifyArchive(path string, size int64) error {
 	lower := strings.ToLower(path)
 	switch {
 	case strings.HasSuffix(lower, ".zip"):
-		z, err := zip.OpenReader(path)
-		if err != nil {
-			return fmt.Errorf("不是完整的 zip 文件：%w", err)
-		}
-		defer z.Close()
-		for _, f := range z.File {
-			rc, err := f.Open()
-			if err == nil {
-				_, err = io.Copy(io.Discard, rc)
-				rc.Close()
-			}
-			if err != nil {
-				return fmt.Errorf("zip 里的 %s 已损坏：%w", f.Name, err)
-			}
-		}
-		return nil
+		return readZip(path)
 	case strings.HasSuffix(lower, ".tar.gz"), strings.HasSuffix(lower, ".tgz"):
 		return readArchive(path, true, true)
 	case strings.HasSuffix(lower, ".gz"):
 		return readArchive(path, true, false)
 	case strings.HasSuffix(lower, ".tar"):
 		return readArchive(path, false, true)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	var head [4]byte
+	n, _ := io.ReadFull(f, head[:])
+	f.Close()
+	switch {
+	case n >= 2 && head[0] == 0x1f && head[1] == 0x8b:
+		return readArchive(path, true, false)
+	case n == 4 && string(head[:]) == "PK\x03\x04":
+		return readZip(path)
+	}
+	return nil
+}
+
+func readZip(path string) error {
+	z, err := zip.OpenReader(path)
+	if err != nil {
+		return fmt.Errorf("不是完整的 zip 文件：%w", err)
+	}
+	defer z.Close()
+	for _, f := range z.File {
+		rc, err := f.Open()
+		if err == nil {
+			_, err = io.Copy(io.Discard, rc)
+			rc.Close()
+		}
+		if err != nil {
+			return fmt.Errorf("zip 里的 %s 已损坏：%w", f.Name, err)
+		}
 	}
 	return nil
 }

@@ -89,9 +89,9 @@ export const brands = [
   { keys: ['huawei', '华为'], name: '华为', vendor: 'Huawei', status: 'supported' },
   { keys: ['xfusion', '超聚变'], name: '超聚变', vendor: 'xFusion', status: 'supported' },
   { keys: ['inspur', '浪潮', 'ieit'], name: '浪潮', vendor: 'Inspur', status: 'supported' },
-  { keys: ['lenovo', '联想'], name: '联想', vendor: 'Lenovo', status: 'v0.1' },
-  { keys: ['dell', '戴尔'], name: 'Dell', vendor: 'Dell', status: 'v0.1' },
-  { keys: ['hpe', 'hewlett', '慧与', '惠普'], name: 'HPE', vendor: 'HPE', status: 'v0.1' },
+  { keys: ['lenovo', '联想'], name: '联想', vendor: 'Lenovo', status: 'supported' },
+  { keys: ['dell', '戴尔'], name: 'Dell', vendor: 'Dell', status: 'supported' },
+  { keys: ['hpe', 'hewlett', '慧与', '惠普', 'hp'], name: 'HPE', vendor: 'HPE', status: 'supported' },
   { keys: ['h3c', '新华三', '华三'], name: '新华三', vendor: 'H3C', status: 'v0.2' },
   { keys: ['ibm'], name: 'IBM', vendor: 'IBM', status: 'v0.2' },
 ];
@@ -103,9 +103,9 @@ export function brandOf(vendor) {
 }
 
 // support 返回设备的一键收集支持情况：
-// { status: 'supported'|'auto'|'v0.1'|'v0.2'|'1.0'|'none', text（表格里的短说明）, reason（不能收集时的原因）, tone, blocked }。
+// { status: 'supported'|'auto'|'v0.2'|'1.0'|'none', text（表格里的短说明）, reason（不能收集时的原因）, tone, blocked }。
 export function support(device) {
-  const supported = store.state?.supported || '华为、超聚变、浪潮';
+  const supported = store.state?.supported || '华为、超聚变、浪潮、联想、Dell、HPE';
   if (device.type && device.type !== 'server') {
     const [v, name] = device.type === 'network' ? ['1.0', '网络设备'] : device.type === 'storage' ? ['v0.2', '存储'] : ['', '这类设备'];
     return {
@@ -149,7 +149,6 @@ export const logTypes = {
   'lenovo.xcc.ffdc': '联想 XCC FFDC',
   'dell.idrac.tsr': 'Dell iDRAC TSR',
   'hpe.ilo.ahs': 'HPE iLO AHS',
-  'hpe.ilo.iml': 'HPE IML / IEL',
 };
 
 export const deviceTypes = [['server', '服务器'], ['storage', '存储'], ['network', '网络'], ['other', '其他']];
