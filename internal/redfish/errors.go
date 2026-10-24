@@ -21,6 +21,9 @@ var ErrTimeout = errors.New("等待设备超时")
 // ErrUnsupported 表示设备没有驱动需要的接口，驱动用 %w 包装它。
 var ErrUnsupported = errors.New("设备不支持此操作")
 
+// ErrPermission 表示账号权限不够（例如网络设备的账号进不了特权模式），驱动用 %w 包装它。
+var ErrPermission = errors.New("账号权限不足")
+
 // Kind 是面向用户的失败分类，每类都对应一条“该怎么做”。
 type Kind int
 
@@ -62,6 +65,7 @@ func KindOf(err error) Kind {
 		return KindUnknown
 	}
 	var (
+		hintErr *HintError
 		httpErr *HTTPError
 		taskErr *TaskError
 		netErr  net.Error
@@ -69,12 +73,16 @@ func KindOf(err error) Kind {
 		hostKey *sshx.HostKeyError
 	)
 	switch {
+	case errors.As(err, &hintErr) && hintErr.Kind != KindUnknown:
+		return hintErr.Kind
 	case errors.Is(err, ErrTimeout), errors.Is(err, context.DeadlineExceeded):
 		return KindTimeout
 	case errors.Is(err, context.Canceled):
 		return KindCanceled
 	case errors.Is(err, ErrUnsupported):
 		return KindUnsupported
+	case errors.Is(err, ErrPermission):
+		return KindPermission
 	case errors.As(err, &taskErr):
 		return KindTaskFailed
 	case errors.Is(err, sshx.ErrAuth):
@@ -103,6 +111,38 @@ func KindOf(err error) Kind {
 		return KindNetwork
 	}
 	return KindUnknown
+}
+
+// HintError 给错误附上专门的处理建议，代替分类的通用建议。
+type HintError struct {
+	Err  error
+	Kind Kind // 为 KindUnknown 时按 Err 判断分类
+	Hint string
+}
+
+func (e *HintError) Error() string { return e.Err.Error() }
+func (e *HintError) Unwrap() error { return e.Err }
+
+// WithHint 给 err 附上处理建议；kind 为 KindUnknown 时分类不变。
+func WithHint(err error, kind Kind, hint string) error {
+	return &HintError{Err: err, Kind: kind, Hint: hint}
+}
+
+// HintOf 返回错误附带的专门建议，没有时为空。
+func HintOf(err error) string {
+	var e *HintError
+	if errors.As(err, &e) {
+		return e.Hint
+	}
+	return ""
+}
+
+// Advice 返回给用户的处理建议：有专门建议时用它，否则用分类的通用建议。
+func Advice(err error) string {
+	if h := HintOf(err); h != "" {
+		return h
+	}
+	return KindOf(err).Hint()
 }
 
 // HTTPError 是设备返回的 4xx/5xx 响应。

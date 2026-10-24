@@ -4,6 +4,8 @@
 //
 // 识别流程：匿名读 Redfish 服务根 → 登录 → 读第一个系统和管理器，
 // 得到厂商、型号、序列号、BMC 固件 → 按厂商选驱动。v0.1 的服务器品牌都支持 Redfish。
+//
+// 网络设备（Request.Type 为 network）不走 Redfish，由 netdev 用 SSH 登录命令行识别和收集。
 package drivers
 
 import (
@@ -19,6 +21,7 @@ import (
 	"github.com/dylanlabs/logdiag-collector/internal/collect"
 	"github.com/dylanlabs/logdiag-collector/internal/collect/huawei"
 	"github.com/dylanlabs/logdiag-collector/internal/collect/inspur"
+	"github.com/dylanlabs/logdiag-collector/internal/collect/netdev"
 	"github.com/dylanlabs/logdiag-collector/internal/redfish"
 )
 
@@ -104,6 +107,23 @@ type Request struct {
 	Store      *collect.Store
 	Progress   func(collect.Event)
 	Sleep      func(context.Context, time.Duration) error // 测试用
+
+	// 以下用于网络设备。
+	Type        string           // 设备类型，network 表示网络设备；空表示服务器
+	Enable      string           // Cisco 的 enable 密码，可空
+	HostKey     string           // 期望的 SSH 主机密钥指纹，空表示首次连接
+	NetRecorder *netdev.Recorder // 命令行会话的诊断记录，可为 nil
+	NetDial     netdev.Dialer    // 测试用
+	NetTiming   netdev.Timing    // 测试用
+}
+
+func (req Request) network() bool { return req.Type == netdev.DeviceType }
+
+func (req Request) netRequest() netdev.Request {
+	return netdev.Request{
+		Address: req.Address, User: req.User, Password: req.Password, Enable: req.Enable, HostKey: req.HostKey,
+		Store: req.Store, Progress: req.Progress, Recorder: req.NetRecorder, Dial: req.NetDial, Timing: req.NetTiming,
+	}
 }
 
 // Collect 识别设备并收集一次日志包。会话在结束、失败或取消时都会删除。
@@ -112,6 +132,14 @@ func Collect(ctx context.Context, req Request) (*collect.Result, error) {
 		if req.Progress != nil {
 			req.Progress(collect.Event{Stage: stage, Percent: -1, Message: msg})
 		}
+	}
+	if req.network() {
+		res, err := netdev.Collect(ctx, req.netRequest())
+		if err != nil {
+			return nil, err
+		}
+		report(collect.StageDone, "已保存到 "+res.Path)
+		return res, nil
 	}
 	var brand Brand
 	if req.Brand != "" {
@@ -191,12 +219,13 @@ func Collect(ctx context.Context, req Request) (*collect.Result, error) {
 
 // Identity 是登录后读到的设备信息，设备表的“识别”用它回填。
 type Identity struct {
-	Brand        Brand  // 没认出时为零值（Key 为空）
+	Brand        Brand  // 没认出时为零值（Key 为空）；网络设备只有 Key 和 Vendor
 	Manufacturer string // 系统的制造商原文
 	Model        string
 	Serial       string
 	Hostname     string
-	Firmware     string // BMC 固件版本
+	Firmware     string // BMC 固件版本；网络设备是系统和版本，例如“NX-OS 9.3(8)”
+	SSHHostKey   string // 网络设备的 SSH 主机密钥指纹
 }
 
 // Vendor 返回写进设备表的品牌：认出时用驱动的厂商名，否则用制造商原文。
@@ -210,6 +239,17 @@ func (id *Identity) Vendor() string {
 // Identify 登录读取型号、序列号、主机名和 BMC 固件，然后退出会话。只读，不触发收集。
 // req.Brand、Store、Progress 不使用。
 func Identify(ctx context.Context, req Request) (*Identity, error) {
+	if req.network() {
+		id, err := netdev.Identify(ctx, req.netRequest())
+		if err != nil {
+			return nil, err
+		}
+		return &Identity{
+			Brand:        Brand{Key: strings.ToLower(id.Vendor), Vendor: id.Vendor},
+			Manufacturer: id.Vendor, Model: id.Model, Serial: id.Serial, Hostname: id.Hostname,
+			Firmware: id.Firmware(), SSHHostKey: id.HostKey,
+		}, nil
+	}
 	c, err := redfish.New(req.Address, redfish.Options{HTTPClient: req.HTTPClient, UserAgent: req.UserAgent, Sleep: req.Sleep})
 	if err != nil {
 		return nil, err

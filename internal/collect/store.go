@@ -43,6 +43,8 @@ type Result struct {
 	Dir      string // 设备文件夹
 	Path     string // 主日志包
 	Manifest Manifest
+	// SSHHostKey 是通过 SSH 收集时设备的主机密钥指纹（SHA256:…），首次连接后由调用方保存，下次核对。
+	SSHHostKey string
 }
 
 func (s *Store) now() time.Time {
@@ -61,11 +63,18 @@ func (s *Store) batchID() string {
 	return s.BatchID
 }
 
+// Attachment 是和主日志包一起保存的附带文件，例如 HPE 的 IML、IEL 日志，manifest 里 role 为 extra。
+type Attachment struct {
+	Name string
+	Data []byte
+}
+
 // Save 创建设备文件夹，由 fetch 把设备上的文件写进来，校验后写 manifest.json。
-// name 是设备给的文件名，例如 dump_info.tar.gz。
+// name 是设备给的文件名，例如 dump_info.tar.gz。extras 是已经读到内存里的附带文件。
 //
 // 下载失败时删除文件夹；下载完整但格式校验失败时保留文件（便于排查）、不写 manifest，并返回错误。
-func (j *Job) Save(log Log, name string, fetch func(w io.Writer) error) (*Result, error) {
+// 附带文件写不进去时跳过，在进度里说明，不影响主日志包。
+func (j *Job) Save(log Log, name string, fetch func(w io.Writer) error, extras ...Attachment) (*Result, error) {
 	s := j.Store
 	start := s.now()
 	dir, err := s.deviceDir(j.Device, log, start)
@@ -89,6 +98,21 @@ func (j *Job) Save(log Log, name string, fetch func(w io.Writer) error) (*Result
 	if err := verifyArchive(path, size); err != nil {
 		return nil, fmt.Errorf("文件已保存到 %s，但校验没有通过：%w", path, err)
 	}
+	files := []File{{Name: name, Size: size, SHA256: sum, Role: "main"}}
+	used := map[string]bool{strings.ToLower(name): true, "manifest.json": true}
+	for _, a := range extras {
+		n := safeFileName(a.Name)
+		if len(a.Data) == 0 || used[strings.ToLower(n)] {
+			continue
+		}
+		if err := os.WriteFile(filepath.Join(dir, n), a.Data, 0o644); err != nil {
+			j.Report(StageVerify, -1, "附带文件 "+n+" 没有保存："+err.Error())
+			continue
+		}
+		used[strings.ToLower(n)] = true
+		h := sha256.Sum256(a.Data)
+		files = append(files, File{Name: n, Size: int64(len(a.Data)), SHA256: hex.EncodeToString(h[:]), Role: "extra"})
+	}
 
 	m := Manifest{
 		Schema:      ManifestSchema,
@@ -108,8 +132,9 @@ func (j *Job) Save(log Log, name string, fetch func(w io.Writer) error) (*Result
 			Controller: j.Device.Controller,
 		},
 		Log:   log,
-		Files: []File{{Name: name, Size: size, SHA256: sum, Role: "main"}},
+		Files: files,
 	}
+	m.Redaction = j.Redaction
 	data, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		return nil, err

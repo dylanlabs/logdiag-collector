@@ -1,0 +1,72 @@
+{
+  "format": "logdiag.netrec/1",
+  "note": "合成：netsim 模拟的 Cisco Catalyst 2960-X（IOS 15.2），不是真机。命令和输出格式依据 Cisco IOS 命令参考（terminal length 0、show version、show inventory、show logging、show tech-support）。账号登录后在普通模式，用 enable 密码进入特权模式。",
+  "tool": "netsim",
+  "recorded_at": "2026-10-24T10:00:00+08:00",
+  "server_version": "SSH-2.0-Cisco-1.25",
+  "host_key": "ssh-ed25519 SHA256:5Ipqtb6aYa0xpct3FUU3aGie5G/kOW2u/beHWhnL/rk",
+  "steps": [
+    {
+      "at_ms": 0,
+      "output": {
+        "text": "\r\n##############################################################\r\n#  Authorized access only. Activity is logged and monitored.  #\r\n##############################################################\r\n\r\nSW-ACCESS-01\u003e"
+      }
+    },
+    {
+      "send": "\n",
+      "at_ms": 30,
+      "output": {
+        "text": "\r\nSW-ACCESS-01\u003e"
+      }
+    },
+    {
+      "send": "enable\n",
+      "at_ms": 61,
+      "output": {
+        "text": "enable\r\nPassword: "
+      }
+    },
+    {
+      "secret": true,
+      "at_ms": 92,
+      "output": {
+        "text": "\r\nSW-ACCESS-01#"
+      }
+    },
+    {
+      "send": "terminal length 0\n",
+      "at_ms": 122,
+      "output": {
+        "text": "terminal length 0\r\nSW-ACCESS-01#"
+      }
+    },
+    {
+      "send": "show version\n",
+      "at_ms": 153,
+      "output": {
+        "text": "show version\r\nCisco IOS Software, C2960X Software (C2960X-UNIVERSALK9-M), Version 15.2(7)E4, RELEASE SOFTWARE (fc2)\r\nTechnical Support: http://www.cisco.com/techsupport\r\nCopyright (c) 1986-2021 by Cisco Systems, Inc.\r\nCompiled Tue 16-Mar-21 06:53 by prod_rel_team\r\n\r\nROM: Bootstrap program is C2960X boot loader\r\nBOOTLDR: C2960X Boot Loader (C2960X-HBOOT-M) Version 15.2(7r)E1, RELEASE SOFTWARE (fc1)\r\n\r\nSW-ACCESS-01 uptime is 12 weeks, 3 days, 4 hours, 5 minutes\r\nSystem returned to ROM by power-on\r\nSystem image file is \"flash:/c2960x-universalk9-mz.152-7.E4/c2960x-universalk9-mz.152-7.E4.bin\"\r\n\r\ncisco WS-C2960X-48TS-L (APM86XXX) processor (revision B0) with 524288K bytes of memory.\r\nProcessor board ID FOCSYNTH005\r\nLast reset from power-on\r\n1 Virtual Ethernet interface\r\n52 Gigabit Ethernet interfaces\r\nThe password-recovery mechanism is enabled.\r\n\r\n512K bytes of flash-simulated non-volatile configuration memory.\r\nBase ethernet MAC Address       : 00:11:22:33:44:00\r\nModel revision number           : B0\r\nModel number                    : WS-C2960X-48TS-L\r\nSystem serial number            : FOCSYNTH005\r\n\r\nSwitch Ports Model                     SW Version            SW Image\r\n------ ----- -----                     ----------            ----------\r\n*    1 52    WS-C2960X-48TS-L          15.2(7)E4             C2960X-UNIVERSALK9-M\r\n\r\nConfiguration register is 0xF\r\nSW-ACCESS-01#"
+      }
+    },
+    {
+      "send": "show inventory\n",
+      "at_ms": 184,
+      "output": {
+        "text": "show inventory\r\nNAME: \"1\", DESCR: \"WS-C2960X-48TS-L\"\r\nPID: WS-C2960X-48TS-L  , VID: V06  , SN: FOCSYNTH005\r\n\r\nNAME: \"Switch 1 - Power Supply 0\", DESCR: \"FRU Power Supply\"\r\nPID: PWR-C2-250WAC     , VID: V02  , SN: LITSYNTH0PS\r\nSW-ACCESS-01#"
+      }
+    },
+    {
+      "send": "show logging\n",
+      "at_ms": 215,
+      "output": {
+        "text": "show logging\r\nSyslog logging: enabled (0 messages dropped, 2 messages rate-limited, 0 flushes, 0 overruns, xml disabled, filtering disabled)\r\n\r\n    Console logging: level debugging, 120 messages logged, xml disabled,\r\n                     filtering disabled\r\n    Buffer logging:  level debugging, 120 messages logged, xml disabled,\r\n                    filtering disabled\r\n    Trap logging: level informational, 124 message lines logged\r\n        Logging to 10.20.0.50  (udp port 514, audit disabled,\r\n              link up),\r\n              124 message lines logged,\r\n              0 message lines rate-limited,\r\n              0 message lines dropped-by-MD,\r\n              xml disabled, sequence number disabled\r\n              filtering disabled\r\n\r\nLog Buffer (16384 bytes):\r\n\r\nOct 26 13:52:10.123: %LINK-3-UPDOWN: Interface GigabitEthernet1/0/24, changed state to down\r\nOct 26 13:52:11.130: %LINEPROTO-5-UPDOWN: Line protocol on Interface GigabitEthernet1/0/24, changed state to down\r\nOct 26 13:57:02.881: %PLATFORM_ENV-1-FAN: Faulty fan detected\r\nOct 26 13:58:40.002: %SYS-5-CONFIG_I: Configured from console by admin on vty0 (10.20.0.99)\r\nSW-ACCESS-01 log end\r\nSW-ACCESS-01#"
+      }
+    },
+    {
+      "send": "show tech-support\n",
+      "at_ms": 246,
+      "output": {
+        "text": "show tech-support\r\n\r\n------------------ show clock ------------------\r\n\r\n*14:03:11.000 CST Mon Oct 26 2026\r\n\r\n------------------ show version ------------------\r\n\r\nCisco IOS Software, C2960X Software (C2960X-UNIVERSALK9-M), Version 15.2(7)E4, RELEASE SOFTWARE (fc2)\r\nTechnical Support: http://www.cisco.com/techsupport\r\nCopyright (c) 1986-2021 by Cisco Systems, Inc.\r\nCompiled Tue 16-Mar-21 06:53 by prod_rel_team\r\n\r\nROM: Bootstrap program is C2960X boot loader\r\nBOOTLDR: C2960X Boot Loader (C2960X-HBOOT-M) Version 15.2(7r)E1, RELEASE SOFTWARE (fc1)\r\n\r\nSW-ACCESS-01 uptime is 12 weeks, 3 days, 4 hours, 5 minutes\r\nSystem returned to ROM by power-on\r\nSystem image file is \"flash:/c2960x-universalk9-mz.152-7.E4/c2960x-universalk9-mz.152-7.E4.bin\"\r\n\r\ncisco WS-C2960X-48TS-L (APM86XXX) processor (revision B0) with 524288K bytes of memory.\r\nProcessor board ID FOCSYNTH005\r\nLast reset from power-on\r\n1 Virtual Ethernet interface\r\n52 Gigabit Ethernet interfaces\r\nThe password-recovery mechanism is enabled.\r\n\r\n512K bytes of flash-simulated non-volatile configuration memory.\r\nBase ethernet MAC Address       : 00:11:22:33:44:00\r\nModel revision number           : B0\r\nModel number                    : WS-C2960X-48TS-L\r\nSystem serial number            : FOCSYNTH005\r\n\r\nSwitch Ports Model                     SW Version            SW Image\r\n------ ----- -----                     ----------            ----------\r\n*    1 52    WS-C2960X-48TS-L          15.2(7)E4             C2960X-UNIVERSALK9-M\r\n\r\nConfiguration register is 0xF\r\n\r\n------------------ show running-config ------------------\r\n\r\n\r\nBuilding configuration...\r\n\r\nCurrent configuration : 4012 bytes\r\n!\r\nversion 17.3\r\nservice timestamps debug datetime msec\r\nservice password-encryption\r\n!\r\nhostname SW-ACCESS-01\r\n!\r\nenable secret 9 ******\r\n!\r\nusername admin privilege 15 secret 9 ******\r\nusername backup privilege 1 password 0 ******\r\nusername netops password 7 ******\r\n!\r\nkey ****** OSPF-KEYS\r\n key ******\r\n  key-string 7 ******\r\n!\r\ninterface Vlan10\r\n ip address 10.20.10.1 255.255.255.0\r\n ip ospf message-digest-key 1 md5 7 ******\r\n!\r\nrouter bgp 65001\r\n neighbor 10.20.0.2 password 7 ******\r\n!\r\ntacacs-server host 10.20.0.60 key 7 ******\r\nradius-server key 7 ******\r\ncrypto isakmp key ****** address 198.51.100.7\r\nsnmp-server community ****** RO\r\nsnmp-server community ****** RW 10\r\nsnmp-server host 10.20.0.50 version 2c ******\r\nntp authentication-key 1 md5 ****** 7\r\n!\r\nline vty 0 4\r\n password 7 ******\r\n transport input ssh\r\n!\r\nend\r\n\r\n------------------ show inventory ------------------\r\n\r\nNAME: \"1\", DESCR: \"WS-C2960X-48TS-L\"\r\nPID: WS-C2960X-48TS-L  , VID: V06  , SN: FOCSYNTH005\r\n\r\nNAME: \"Switch 1 - Power Supply 0\", DESCR: \"FRU Power Supply\"\r\nPID: PWR-C2-250WAC     , VID: V02  , SN: LITSYNTH0PS\r\n\r\n------------------ show environment all ------------------\r\n\r\nFAN PS-1 is OK\r\nFAN 1 is OK\r\nFAN 2 is OK\r\nFAN 3 is FAULTY\r\nSYSTEM TEMPERATURE is OK\r\nSystem Temperature Value: 38 Degree Celsius\r\nCollecting data, please wait ... done\r\nPower Supply A: OK\r\n\r\n------------------ show interfaces ------------------\r\n\r\nGigabitEthernet1/0/1 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0001 (bia 0011.2233.0001)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     100000 packets input, 64000000 bytes, 0 no buffer\r\n     1 input errors, 1 CRC, 0 frame, 0 overrun, 0 ignored\r\n     90000 packets output, 58000000 bytes, 0 underruns\r\nGigabitEthernet1/0/2 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0002 (bia 0011.2233.0002)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     200000 packets input, 128000000 bytes, 0 no buffer\r\n     2 input errors, 2 CRC, 0 frame, 0 overrun, 0 ignored\r\n     180000 packets output, 116000000 bytes, 0 underruns\r\nGigabitEthernet1/0/3 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0003 (bia 0011.2233.0003)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     300000 packets input, 192000000 bytes, 0 no buffer\r\n     3 input errors, 3 CRC, 0 frame, 0 overrun, 0 ignored\r\n     270000 packets output, 174000000 bytes, 0 underruns\r\nGigabitEthernet1/0/4 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0004 (bia 0011.2233.0004)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     400000 packets input, 256000000 bytes, 0 no buffer\r\n     4 input errors, 4 CRC, 0 frame, 0 overrun, 0 ignored\r\n     360000 packets output, 232000000 bytes, 0 underruns\r\nGigabitEthernet1/0/5 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0005 (bia 0011.2233.0005)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     500000 packets input, 320000000 bytes, 0 no buffer\r\n     5 input errors, 0 CRC, 0 frame, 0 overrun, 0 ignored\r\n     450000 packets output, 290000000 bytes, 0 underruns\r\nGigabitEthernet1/0/6 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0006 (bia 0011.2233.0006)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     600000 packets input, 384000000 bytes, 0 no buffer\r\n     6 input errors, 1 CRC, 0 frame, 0 overrun, 0 ignored\r\n     540000 packets output, 348000000 bytes, 0 underruns\r\nGigabitEthernet1/0/7 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0007 (bia 0011.2233.0007)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     700000 packets input, 448000000 bytes, 0 no buffer\r\n     0 input errors, 2 CRC, 0 frame, 0 overrun, 0 ignored\r\n     630000 packets output, 406000000 bytes, 0 underruns\r\nGigabitEthernet1/0/8 is up, line protocol is up (connected)\r\n  Hardware is Gigabit Ethernet, address is 0011.2233.0008 (bia 0011.2233.0008)\r\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec,\r\n     reliability 255/255, txload 1/255, rxload 1/255\r\n  Full-duplex, 1000Mb/s, media type is 10/100/1000BaseTX\r\n     800000 packets input, 512000000 bytes, 0 no buffer\r\n     1 input errors, 3 CRC, 0 frame, 0 overrun, 0 ignored\r\n     720000 packets output, 464000000 bytes, 0 underruns\r\n\r\n------------------ show logging ------------------\r\n\r\nSyslog logging: enabled (0 messages dropped, 2 messages rate-limited, 0 flushes, 0 overruns, xml disabled, filtering disabled)\r\n\r\n    Console logging: level debugging, 120 messages logged, xml disabled,\r\n                     filtering disabled\r\n    Buffer logging:  level debugging, 120 messages logged, xml disabled,\r\n                    filtering disabled\r\n    Trap logging: level informational, 124 message lines logged\r\n        Logging to 10.20.0.50  (udp port 514, audit disabled,\r\n              link up),\r\n              124 message lines logged,\r\n              0 message lines rate-limited,\r\n              0 message lines dropped-by-MD,\r\n              xml disabled, sequence number disabled\r\n              filtering disabled\r\n\r\nLog Buffer (16384 bytes):\r\n\r\nOct 26 13:52:10.123: %LINK-3-UPDOWN: Interface GigabitEthernet1/0/24, changed state to down\r\nOct 26 13:52:11.130: %LINEPROTO-5-UPDOWN: Line protocol on Interface GigabitEthernet1/0/24, changed state to down\r\nOct 26 13:57:02.881: %PLATFORM_ENV-1-FAN: Faulty fan detected\r\nOct 26 13:58:40.002: %SYS-5-CONFIG_I: Configured from console by admin on vty0 (10.20.0.99)\r\nSW-ACCESS-01 log end\r\n\r\n------------------ show history all ------------------\r\n\r\nSW-ACCESS-01#\r\n  show version\r\n  show tech-support\r\nSW-ACCESS-01#"
+      }
+    }
+  ]
+}
