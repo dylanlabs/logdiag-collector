@@ -103,6 +103,8 @@ func (j *Job) Save(log Log, name string, fetch func(w io.Writer) error) (*Result
 			Serial:     j.Device.Serial,
 			Hostname:   j.Device.Hostname,
 			MgmtIP:     j.Device.Address,
+			HostIP:     j.Device.HostIP,
+			OS:         j.Device.OS,
 			Controller: j.Device.Controller,
 		},
 		Log:   log,

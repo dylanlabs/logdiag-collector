@@ -5,6 +5,7 @@
 //
 // 防止账号被锁定：一次连接里密码最多发送一次（password 和 keyboard-interactive 两种方式合计），
 // 认证失败返回 ErrAuth，调用方不要重试。设备流量直连，不走系统代理。
+// 也可以用私钥登录（先试私钥，服务器不接受再用密码）。
 package sshx
 
 import (
@@ -63,6 +64,9 @@ type Config struct {
 	Address  string
 	User     string
 	Password string
+	// Key 是登录用的私钥（OpenSSH 或 PEM 格式，不能带口令），可为空。
+	// 有私钥时先用私钥认证，服务器不接受再用密码；没有填密码时只用私钥。
+	Key []byte
 	// HostKey 是期望的主机密钥指纹（SHA256:… 形式）。为空时接受服务器给出的密钥（首次连接），
 	// 连接后用 Client.HostKey 取得指纹保存下来，下次连接时传入。
 	HostKey string
@@ -122,12 +126,27 @@ func dial(ctx context.Context, c *Client, cfg Config, addr string, timeout time.
 		}
 		return nil, errExtraFactor
 	}
+	var auth []ssh.AuthMethod
+	if len(cfg.Key) > 0 {
+		signer, err := ssh.ParsePrivateKey(cfg.Key)
+		var missing *ssh.PassphraseMissingError
+		switch {
+		case errors.As(err, &missing):
+			return nil, errors.New("私钥带口令，本工具不支持带口令的私钥")
+		case err != nil:
+			return nil, fmt.Errorf("私钥无法使用：%w", err)
+		}
+		auth = append(auth, ssh.PublicKeys(signer))
+	}
+	if len(cfg.Key) == 0 || cfg.Password != "" {
+		auth = append(auth, ssh.PasswordCallback(password), ssh.KeyboardInteractive(kbd))
+	}
 	// 主机密钥回调在握手协程里调用，连接中途重新协商密钥时还会再调用。
 	var mu sync.Mutex
 	var seenKey, seenType string
 	conf := &ssh.ClientConfig{
 		User: cfg.User,
-		Auth: []ssh.AuthMethod{ssh.PasswordCallback(password), ssh.KeyboardInteractive(kbd)},
+		Auth: auth,
 		HostKeyCallback: func(_ string, _ net.Addr, key ssh.PublicKey) error {
 			fp := ssh.FingerprintSHA256(key)
 			mu.Lock()
@@ -176,7 +195,7 @@ func dial(ctx context.Context, c *Client, cfg Config, addr string, timeout time.
 	}
 	if err != nil {
 		conn.Close()
-		return nil, classify(err, sent)
+		return nil, classify(err, sent, len(cfg.Key) > 0)
 	}
 	conn.SetDeadline(time.Time{})
 	mu.Lock()
@@ -186,8 +205,8 @@ func dial(ctx context.Context, c *Client, cfg Config, addr string, timeout time.
 	return ssh.NewClient(sc, chans, reqs), nil
 }
 
-// classify 把握手和认证的错误换成调用方能判断的类型。
-func classify(err error, sent bool) error {
+// classify 把握手和认证的错误换成调用方能判断的类型。sent 表示密码已经发出，key 表示试过私钥。
+func classify(err error, sent, key bool) error {
 	var hk *HostKeyError
 	if errors.As(err, &hk) {
 		return hk
@@ -199,8 +218,11 @@ func classify(err error, sent bool) error {
 	case errors.Is(err, errExtraFactor):
 		return fmt.Errorf("%w：要求动态口令等额外验证，本工具不支持", ErrNoPassword)
 	case strings.Contains(msg, "unable to authenticate") || strings.Contains(msg, "Too many authentication failures"):
-		if sent {
+		switch {
+		case sent:
 			return fmt.Errorf("%w（服务器拒绝了这个账号或密码）", ErrAuth)
+		case key:
+			return fmt.Errorf("%w（服务器不接受这个账号的私钥）", ErrAuth)
 		}
 		return fmt.Errorf("%w，只允许密钥等其他方式登录", ErrNoPassword)
 	case strings.Contains(msg, "no common algorithm"):

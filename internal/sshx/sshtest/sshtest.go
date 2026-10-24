@@ -5,6 +5,7 @@
 package sshtest
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -28,11 +29,13 @@ type Handler func(ctx context.Context, cmd string, stdin io.Reader, stdout, stde
 // Options 是测试服务器的设置。
 type Options struct {
 	User, Password string
-	// Methods 是服务器接受的认证方式：password、keyboard-interactive、publickey（一律拒绝）。
+	// Methods 是服务器接受的认证方式：password、keyboard-interactive、publickey（只认 AuthorizedKey）。
 	// 为空时接受 password 和 keyboard-interactive。
 	Methods []string
 	// Version 是服务器版本串，为空时用 SSH-2.0-OpenSSH_9.6。
 	Version string
+	// AuthorizedKey 是允许登录的公钥，设置后服务器也接受用这把密钥登录（publickey 方式）。
+	AuthorizedKey ssh.PublicKey
 }
 
 // Server 是测试用的 SSH 服务器，测试结束时自动关闭。
@@ -125,8 +128,11 @@ func (s *Server) config() *ssh.ServerConfig {
 			return check(c.User(), answers[0])
 		}
 	}
-	if slices.Contains(methods, "publickey") {
-		conf.PublicKeyCallback = func(ssh.ConnMetadata, ssh.PublicKey) (*ssh.Permissions, error) {
+	if slices.Contains(methods, "publickey") || s.opts.AuthorizedKey != nil {
+		conf.PublicKeyCallback = func(c ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+			if k := s.opts.AuthorizedKey; k != nil && c.User() == s.opts.User && bytes.Equal(key.Marshal(), k.Marshal()) {
+				return nil, nil
+			}
 			return nil, errors.New("密钥不认识")
 		}
 	}

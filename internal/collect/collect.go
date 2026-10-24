@@ -52,6 +52,8 @@ type Device struct {
 	Serial     string
 	Hostname   string
 	Address    string // 管理口地址
+	HostIP     string // 系统地址（OS 巡检用），对应 manifest 的 device.host_ip
+	OS         string // 操作系统，例如 Rocky Linux 9.4，对应 manifest 的 device.os
 	Controller Controller
 }
 

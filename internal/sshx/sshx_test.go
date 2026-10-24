@@ -5,6 +5,9 @@ package sshx_test
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +15,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"golang.org/x/crypto/ssh"
 
 	"github.com/dylanlabs/logdiag-collector/internal/sshx"
 	"github.com/dylanlabs/logdiag-collector/internal/sshx/sshtest"
@@ -111,6 +116,60 @@ func TestNoPasswordMethod(t *testing.T) {
 	_, err := dial(t, s, "Secret-1")
 	if !errors.Is(err, sshx.ErrNoPassword) || errors.Is(err, sshx.ErrAuth) {
 		t.Fatalf("错误 = %v，应包装 ErrNoPassword 而不是 ErrAuth", err)
+	}
+}
+
+// newKey 生成测试用的私钥（OpenSSH 格式）和对应的公钥。
+func newKey(t *testing.T, passphrase string) ([]byte, ssh.PublicKey) {
+	t.Helper()
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var block *pem.Block
+	if passphrase == "" {
+		block, err = ssh.MarshalPrivateKey(priv, "test")
+	} else {
+		block, err = ssh.MarshalPrivateKeyWithPassphrase(priv, "test", []byte(passphrase))
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	sshPub, err := ssh.NewPublicKey(pub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return pem.EncodeToMemory(block), sshPub
+}
+
+func TestKeyLogin(t *testing.T) {
+	key, pub := newKey(t, "")
+	other, _ := newKey(t, "")
+	s := sshtest.New(t, sshtest.Options{User: "root", Password: "Secret-1", AuthorizedKey: pub}, echo)
+	withKey := func(k []byte) func(*sshx.Config) { return func(c *sshx.Config) { c.Key = k } }
+
+	// 只有私钥：不发密码。
+	if _, err := dial(t, s, "", withKey(key)); err != nil {
+		t.Fatalf("私钥登录失败：%v", err)
+	}
+	// 私钥不对、填了密码：退回密码登录。
+	if _, err := dial(t, s, "Secret-1", withKey(other)); err != nil {
+		t.Fatalf("私钥不对时应退回密码登录：%v", err)
+	}
+	if s.Failures() != 0 {
+		t.Errorf("服务器记了 %d 次密码错误", s.Failures())
+	}
+	// 私钥不对、没有密码：认证失败，不发空密码。
+	if _, err := dial(t, s, "", withKey(other)); !errors.Is(err, sshx.ErrAuth) {
+		t.Fatalf("错误 = %v，应包装 ErrAuth", err)
+	}
+	if s.Failures() != 0 {
+		t.Error("只用私钥时不应发送密码")
+	}
+	// 带口令的私钥：连接前就报错。
+	locked, _ := newKey(t, "pass-phrase")
+	if _, err := dial(t, s, "", withKey(locked)); err == nil || !strings.Contains(err.Error(), "口令") {
+		t.Fatalf("错误 = %v，应说明不支持带口令的私钥", err)
 	}
 }
 
