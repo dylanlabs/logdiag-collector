@@ -208,32 +208,50 @@ func (c *countWriter) Write(p []byte) (int, error) {
 }
 
 // verifyArchive 按扩展名把压缩包完整读一遍，发现截断或损坏。
+// 扩展名认不出时（例如联想的 .tzz）看文件开头：是 gzip 或 zip 就按对应格式检查，其他格式不检查。
 func verifyArchive(path string, size int64) error {
 	lower := strings.ToLower(path)
 	switch {
 	case strings.HasSuffix(lower, ".zip"):
-		z, err := zip.OpenReader(path)
-		if err != nil {
-			return fmt.Errorf("不是完整的 zip 文件：%w", err)
-		}
-		defer z.Close()
-		for _, f := range z.File {
-			rc, err := f.Open()
-			if err == nil {
-				_, err = io.Copy(io.Discard, rc)
-				rc.Close()
-			}
-			if err != nil {
-				return fmt.Errorf("zip 里的 %s 已损坏：%w", f.Name, err)
-			}
-		}
-		return nil
+		return readZip(path)
 	case strings.HasSuffix(lower, ".tar.gz"), strings.HasSuffix(lower, ".tgz"):
 		return readArchive(path, true, true)
 	case strings.HasSuffix(lower, ".gz"):
 		return readArchive(path, true, false)
 	case strings.HasSuffix(lower, ".tar"):
 		return readArchive(path, false, true)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	var head [4]byte
+	n, _ := io.ReadFull(f, head[:])
+	f.Close()
+	switch {
+	case n >= 2 && head[0] == 0x1f && head[1] == 0x8b:
+		return readArchive(path, true, false)
+	case n == 4 && string(head[:]) == "PK\x03\x04":
+		return readZip(path)
+	}
+	return nil
+}
+
+func readZip(path string) error {
+	z, err := zip.OpenReader(path)
+	if err != nil {
+		return fmt.Errorf("不是完整的 zip 文件：%w", err)
+	}
+	defer z.Close()
+	for _, f := range z.File {
+		rc, err := f.Open()
+		if err == nil {
+			_, err = io.Copy(io.Discard, rc)
+			rc.Close()
+		}
+		if err != nil {
+			return fmt.Errorf("zip 里的 %s 已损坏：%w", f.Name, err)
+		}
 	}
 	return nil
 }

@@ -1,0 +1,515 @@
+{
+  "format": "logdiag.httprec/1",
+  "note": "合成：依据 HPE 官方 python-ilorest-library 示例 get_ahs_data.py 和 iLOrest serverlogs 命令——管理器 Oem.Hpe.Links.ActiveHealthSystem 指向 AHS 资源，Links.RecentWeek.extref 是最近 7 天的下载地址，GET 它返回 .ahs 文件；IML、IEL 条目用 $expand=. 读取，IML 分两页（Members@odata.nextLink）。未经真机核对。",
+  "interactions": [
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1",
+            "@odata.type": "#ServiceRoot.v1_13_0.ServiceRoot",
+            "Id": "RootService",
+            "RedfishVersion": "1.13.0",
+            "Vendor": "HPE",
+            "Product": "ProLiant DL380 Gen11",
+            "UUID": "00000000-0000-4000-8000-000000000116",
+            "Systems": {
+              "@odata.id": "/redfish/v1/Systems"
+            },
+            "Managers": {
+              "@odata.id": "/redfish/v1/Managers"
+            },
+            "SessionService": {
+              "@odata.id": "/redfish/v1/SessionService"
+            },
+            "Links": {
+              "Sessions": {
+                "@odata.id": "/redfish/v1/SessionService/Sessions"
+              }
+            },
+            "Oem": {
+              "Hpe": {
+                "@odata.type": "#HpeiLOServiceExt.v2_6_0.HpeiLOServiceExt",
+                "Manager": [
+                  {
+                    "ManagerType": "iLO 6"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/redfish/v1/SessionService/Sessions",
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "UserName": "admin",
+            "Password": "REDACTED"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-Auth-Token": [
+            "REDACTED"
+          ],
+          "Location": [
+            "/redfish/v1/SessionService/Sessions/admin00000000000a1b2"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/SessionService/Sessions/admin00000000000a1b2",
+            "Id": "admin00000000000a1b2",
+            "UserName": "admin"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers",
+            "Members": [
+              {
+                "@odata.id": "/redfish/v1/Managers/1"
+              }
+            ],
+            "Members@odata.count": 1
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers/1"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers/1",
+            "@odata.type": "#Manager.v1_7_0.Manager",
+            "Id": "1",
+            "Name": "Manager",
+            "ManagerType": "BMC",
+            "Model": "iLO 6",
+            "FirmwareVersion": "iLO 6 v1.62",
+            "Actions": {
+              "#Manager.Reset": {
+                "target": "/redfish/v1/Managers/1/Actions/Manager.Reset"
+              }
+            },
+            "LogServices": {
+              "@odata.id": "/redfish/v1/Managers/1/LogServices"
+            },
+            "Oem": {
+              "Hpe": {
+                "@odata.type": "#HpeiLO.v2_9_0.HpeiLO",
+                "Links": {
+                  "ActiveHealthSystem": {
+                    "@odata.id": "/redfish/v1/Managers/1/ActiveHealthSystem"
+                  },
+                  "DateTimeService": {
+                    "@odata.id": "/redfish/v1/Managers/1/DateTime"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems",
+            "Members": [
+              {
+                "@odata.id": "/redfish/v1/Systems/1"
+              }
+            ],
+            "Members@odata.count": 1
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems/1"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems/1",
+            "@odata.type": "#ComputerSystem.v1_17_0.ComputerSystem",
+            "Id": "1",
+            "Manufacturer": "HPE",
+            "Model": "ProLiant DL380 Gen11",
+            "SKU": "P52534-B21",
+            "SerialNumber": "CZJSYNTH01",
+            "HostName": "db02",
+            "PowerState": "On",
+            "BiosVersion": "U54 v2.16",
+            "LogServices": {
+              "@odata.id": "/redfish/v1/Systems/1/LogServices"
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers/1/ActiveHealthSystem"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers/1/ActiveHealthSystem",
+            "@odata.type": "#HpeiLOActiveHealthSystem.v2_5_0.HpeiLOActiveHealthSystem",
+            "Id": "ActiveHealthSystem",
+            "Name": "Active Health System",
+            "AHSEnabled": true,
+            "AHSFileStart": "2026-03-02T08:11:05Z",
+            "AHSFileEnd": "2026-10-26T06:00:12Z",
+            "Actions": {
+              "#HpeiLOActiveHealthSystem.ClearLog": {
+                "target": "/redfish/v1/Managers/1/ActiveHealthSystem/Actions/HpeiLOActiveHealthSystem.ClearLog"
+              }
+            },
+            "Links": {
+              "AHSLocation": {
+                "extref": "/ahsdata/HPE_CZJSYNTH01_20261026.ahs?downloadAll=1"
+              },
+              "RecentWeek": {
+                "extref": "/ahsdata/HPE_CZJSYNTH01_20261026.ahs?from=2026-10-20&&to=2026-10-26"
+              }
+            },
+            "Status": {
+              "State": "Enabled"
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems/1/LogServices/IML"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems/1/LogServices/IML",
+            "Id": "IML",
+            "Name": "Integrated Management Log",
+            "Entries": {
+              "@odata.id": "/redfish/v1/Systems/1/LogServices/IML/Entries"
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems/1/LogServices/IML/Entries?$expand=."
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems/1/LogServices/IML/Entries",
+            "Name": "Integrated Management Log Entries",
+            "Members": [
+              {
+                "@odata.id": "/redfish/v1/Systems/1/LogServices/IML/Entries/1",
+                "@odata.type": "#LogEntry.v1_11_0.LogEntry",
+                "Id": "1",
+                "Name": "Integrated Management Log",
+                "Created": "2026-10-20T03:12:44Z",
+                "EntryType": "Oem",
+                "OemRecordFormat": "Hpe-IML",
+                "Severity": "OK",
+                "Message": "IML Cleared (iLO 6 user: admin)",
+                "Oem": {
+                  "Hpe": {
+                    "@odata.type": "#HpeLogEntry.v2_5_0.HpeLogEntry",
+                    "Categories": [
+                      "Maintenance"
+                    ],
+                    "ClassDescription": "Maintenance",
+                    "Count": 1,
+                    "EventNumber": 1,
+                    "Repaired": false,
+                    "Updated": "2026-10-20T03:12:44Z"
+                  }
+                }
+              },
+              {
+                "@odata.id": "/redfish/v1/Systems/1/LogServices/IML/Entries/2",
+                "@odata.type": "#LogEntry.v1_11_0.LogEntry",
+                "Id": "2",
+                "Name": "Integrated Management Log",
+                "Created": "2026-10-24T22:41:09Z",
+                "EntryType": "Oem",
+                "OemRecordFormat": "Hpe-IML",
+                "Severity": "Critical",
+                "Message": "Uncorrectable Machine Check Exception (Processor 2, APIC ID 0x00000040, Bank 0x00000011)",
+                "Oem": {
+                  "Hpe": {
+                    "@odata.type": "#HpeLogEntry.v2_5_0.HpeLogEntry",
+                    "Categories": [
+                      "System Error"
+                    ],
+                    "ClassDescription": "System Error",
+                    "Count": 1,
+                    "EventNumber": 2,
+                    "Repaired": false,
+                    "Updated": "2026-10-24T22:41:09Z"
+                  }
+                }
+              }
+            ],
+            "Members@odata.count": 3,
+            "Members@odata.nextLink": "/redfish/v1/Systems/1/LogServices/IML/Entries?page=2"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems/1/LogServices/IML/Entries?page=2&$expand=."
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems/1/LogServices/IML/Entries",
+            "Name": "Integrated Management Log Entries",
+            "Members": [
+              {
+                "@odata.id": "/redfish/v1/Systems/1/LogServices/IML/Entries/3",
+                "@odata.type": "#LogEntry.v1_11_0.LogEntry",
+                "Id": "3",
+                "Name": "Integrated Management Log",
+                "Created": "2026-10-25T01:02:03Z",
+                "EntryType": "Oem",
+                "OemRecordFormat": "Hpe-IML",
+                "Severity": "Critical",
+                "Message": "Server Critical Fault (Service Information: Runtime Fault, Processor 2)",
+                "Oem": {
+                  "Hpe": {
+                    "@odata.type": "#HpeLogEntry.v2_5_0.HpeLogEntry",
+                    "Categories": [
+                      "System Error"
+                    ],
+                    "ClassDescription": "System Error",
+                    "Count": 1,
+                    "EventNumber": 3,
+                    "Repaired": false,
+                    "Updated": "2026-10-25T01:02:03Z"
+                  }
+                }
+              }
+            ],
+            "Members@odata.count": 3
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers/1/LogServices/IEL"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers/1/LogServices/IEL",
+            "Id": "IEL",
+            "Name": "iLO Event Log",
+            "Entries": {
+              "@odata.id": "/redfish/v1/Managers/1/LogServices/IEL/Entries"
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers/1/LogServices/IEL/Entries?$expand=."
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers/1/LogServices/IEL/Entries",
+            "Name": "iLO Event Log Entries",
+            "Members": [
+              {
+                "@odata.id": "/redfish/v1/Managers/1/LogServices/IEL/Entries/1",
+                "@odata.type": "#LogEntry.v1_11_0.LogEntry",
+                "Id": "1",
+                "Name": "iLO Event Log",
+                "Created": "2026-10-21T09:30:00Z",
+                "EntryType": "Oem",
+                "OemRecordFormat": "Hpe-iLOEventLog",
+                "Severity": "OK",
+                "Message": "Firmware flashed (iLO 6 1.62)",
+                "Oem": {
+                  "Hpe": {
+                    "@odata.type": "#HpeLogEntry.v2_5_0.HpeLogEntry",
+                    "Count": 1,
+                    "EventNumber": 1,
+                    "Updated": "2026-10-21T09:30:00Z"
+                  }
+                }
+              },
+              {
+                "@odata.id": "/redfish/v1/Managers/1/LogServices/IEL/Entries/2",
+                "@odata.type": "#LogEntry.v1_11_0.LogEntry",
+                "Id": "2",
+                "Name": "iLO Event Log",
+                "Created": "2026-10-26T05:58:41Z",
+                "EntryType": "Oem",
+                "OemRecordFormat": "Hpe-iLOEventLog",
+                "Severity": "OK",
+                "Message": "Server power restored.",
+                "Oem": {
+                  "Hpe": {
+                    "@odata.type": "#HpeLogEntry.v2_5_0.HpeLogEntry",
+                    "Count": 1,
+                    "EventNumber": 2,
+                    "Updated": "2026-10-26T05:58:41Z"
+                  }
+                }
+              }
+            ],
+            "Members@odata.count": 2
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/ahsdata/HPE_CZJSYNTH01_20261026.ahs?from=2026-10-20&&to=2026-10-26"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/octet-stream"
+          ]
+        },
+        "body": {
+          "base64": "QUJKUgABc3ludGhldGljIEFIUyBkYXRhIGZvciBDWkpTWU5USDAxLCAyMDI2LTEwLTIwIC4uIDIwMjYtMTAtMjYAAAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+Pw=="
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "path": "/redfish/v1/SessionService/Sessions/admin00000000000a1b2"
+      },
+      "response": {
+        "status": 200
+      }
+    }
+  ]
+}

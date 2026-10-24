@@ -1,0 +1,334 @@
+{
+  "format": "logdiag.httprec/1",
+  "note": "合成：依据 iLOrest serverlogs 命令处理老固件的分支——AHS 资源没有 Links.RecentWeek 时，把 AHSLocation.extref 里的 downloadAll=1 换成 from=<6 天前>&&to=<AHSFileEnd 的日期>（AHSFileEnd 是 10 月 25 日，所以到 25 日为止）。地址带结尾斜杠（iLO 5 早期固件的写法）。IML 不支持 $expand（条目只有链接），IEL 读取返回 400，两者都跳过。未经真机核对。",
+  "interactions": [
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/",
+            "@odata.type": "#ServiceRoot.v1_5_0.ServiceRoot",
+            "Id": "RootService",
+            "RedfishVersion": "1.6.0",
+            "Vendor": "HPE",
+            "Product": "ProLiant DL360 Gen10",
+            "Systems": {
+              "@odata.id": "/redfish/v1/Systems/"
+            },
+            "Managers": {
+              "@odata.id": "/redfish/v1/Managers/"
+            },
+            "SessionService": {
+              "@odata.id": "/redfish/v1/SessionService/"
+            },
+            "Links": {
+              "Sessions": {
+                "@odata.id": "/redfish/v1/SessionService/Sessions/"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/redfish/v1/SessionService/Sessions/",
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "UserName": "admin",
+            "Password": "REDACTED"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-Auth-Token": [
+            "REDACTED"
+          ],
+          "Location": [
+            "/redfish/v1/SessionService/Sessions/admin00000000000c3d4/"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/SessionService/Sessions/admin00000000000c3d4/",
+            "Id": "",
+            "UserName": "admin"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers/"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers/",
+            "Members": [
+              {
+                "@odata.id": "/redfish/v1/Managers/1/"
+              }
+            ],
+            "Members@odata.count": 1
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers/1/"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers/1/",
+            "@odata.type": "#Manager.v1_5_1.Manager",
+            "Id": "1",
+            "Name": "Manager",
+            "ManagerType": "BMC",
+            "Model": "iLO 5",
+            "FirmwareVersion": "iLO 5 v2.30",
+            "LogServices": {
+              "@odata.id": "/redfish/v1/Managers/1/LogServices/"
+            },
+            "Oem": {
+              "Hpe": {
+                "@odata.type": "#HpeiLO.v2_7_0.HpeiLO",
+                "Links": {
+                  "ActiveHealthSystem": {
+                    "@odata.id": "/redfish/v1/Managers/1/ActiveHealthSystem/"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems/"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems/",
+            "Members": [
+              {
+                "@odata.id": "/redfish/v1/Systems/1/"
+              }
+            ],
+            "Members@odata.count": 1
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems/1/"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems/1/",
+            "Id": "1",
+            "Manufacturer": "HPE",
+            "Model": "ProLiant DL360 Gen10",
+            "SerialNumber": "MXQSYNTH05",
+            "HostName": "app05",
+            "PowerState": "On",
+            "LogServices": {
+              "@odata.id": "/redfish/v1/Systems/1/LogServices/"
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers/1/ActiveHealthSystem/"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Managers/1/ActiveHealthSystem/",
+            "@odata.type": "#HpeiLOActiveHealthSystem.v2_3_0.HpeiLOActiveHealthSystem",
+            "Id": "ActiveHealthSystem",
+            "AHSEnabled": true,
+            "AHSFileStart": "2025-03-01T00:00:00Z",
+            "AHSFileEnd": "2026-10-25T23:10:00Z",
+            "Links": {
+              "AHSLocation": {
+                "extref": "/ahsdata/HPE_MXQSYNTH05_20261026.ahs?downloadAll=1"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems/1/LogServices/IML"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems/1/LogServices/IML/",
+            "Id": "IML",
+            "Entries": {
+              "@odata.id": "/redfish/v1/Systems/1/LogServices/IML/Entries/"
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Systems/1/LogServices/IML/Entries/?$expand=."
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "@odata.id": "/redfish/v1/Systems/1/LogServices/IML/Entries/",
+            "Members": [
+              {
+                "@odata.id": "/redfish/v1/Systems/1/LogServices/IML/Entries/1/"
+              },
+              {
+                "@odata.id": "/redfish/v1/Systems/1/LogServices/IML/Entries/2/"
+              }
+            ],
+            "Members@odata.count": 2
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/redfish/v1/Managers/1/LogServices/IEL"
+      },
+      "response": {
+        "status": 400,
+        "header": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "body": {
+          "json": {
+            "error": {
+              "code": "iLO.0.10.ExtendedInfo",
+              "message": "See @Message.ExtendedInfo for more information.",
+              "@Message.ExtendedInfo": [
+                {
+                  "MessageId": "Base.1.4.ResourceMissingAtURI",
+                  "MessageArgs": [
+                    "/redfish/v1/Managers/1/LogServices/IEL"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/ahsdata/HPE_MXQSYNTH05_20261026.ahs?from=2026-10-20&&to=2026-10-25"
+      },
+      "response": {
+        "status": 200,
+        "header": {
+          "Content-Type": [
+            "application/octet-stream"
+          ]
+        },
+        "body": {
+          "base64": "QUJKUgABc3ludGhldGljIEFIUyBkYXRhIGZvciBNWFFTWU5USDA1LCAyMDI2LTEwLTIwIC4uIDIwMjYtMTAtMjUAAAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "path": "/redfish/v1/SessionService/Sessions/admin00000000000c3d4/"
+      },
+      "response": {
+        "status": 200
+      }
+    }
+  ]
+}

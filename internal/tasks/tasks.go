@@ -396,6 +396,7 @@ func (m *Manager) collect(ctx context.Context, t *task, settings appdata.Setting
 		User:       a.User,
 		Password:   a.Password,
 		Brand:      brandHint(a.Device.Vendor),
+		AcceptEULA: settings.AcceptEULA,
 		HTTPClient: hc,
 		UserAgent:  buildinfo.UserAgent(),
 		Store:      newStore(a, t, settings),
@@ -536,6 +537,9 @@ var brands = []struct {
 	{"huawei", "华为", []string{"huawei", "华为"}},
 	{"xfusion", "超聚变", []string{"xfusion", "超聚变"}},
 	{"inspur", "浪潮", []string{"inspur", "浪潮", "ieit"}},
+	{"lenovo", "联想", []string{"lenovo", "联想"}},
+	{"dell", "Dell", []string{"dell", "戴尔"}},
+	{"hpe", "HPE", []string{"hpe", "hewlett", "慧与", "惠普", "hp"}}, // 设备表里常把 HPE 写成 HP 或惠普
 }
 
 // brandOf 把设备表里的品牌写法对应到驱动键，认不出时为空。
@@ -556,7 +560,7 @@ func brandOf(vendor string) string {
 	return ""
 }
 
-// SupportedText 返回已支持品牌的中文名，例如“华为、超聚变、浪潮”。
+// SupportedText 返回已支持品牌的中文名，例如“华为、超聚变、浪潮、联想、Dell、HPE”。
 func SupportedText() string {
 	var names []string
 	for _, b := range brands {

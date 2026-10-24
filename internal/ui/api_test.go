@@ -279,7 +279,7 @@ func TestResultsAndOpenAPI(t *testing.T) {
 func TestTasksAPI(t *testing.T) {
 	c, _ := newAPI(t)
 	var d inventory.Device
-	c.post("/api/devices", map[string]any{"mgmt_ip": "10.0.0.40", "vendor": "Dell", "user": "root", "password": "pw"}, &d)
+	c.post("/api/devices", map[string]any{"mgmt_ip": "10.0.0.40", "vendor": "H3C", "user": "root", "password": "pw"}, &d)
 	var res struct {
 		Started []tasks.Task
 		Skipped []tasks.Skip

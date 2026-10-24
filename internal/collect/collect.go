@@ -67,6 +67,14 @@ type Controller struct {
 type Log struct {
 	Type   string `json:"type"`   // 编码，例如 huawei.ibmc.dump，见 docs/schema/manifest-1.schema.json
 	Method string `json:"method"` // redfish-oem、redfish-standard、bmc-web-api……
+	// Range 是日志覆盖的时间段，只收一段时间的日志时填（例如 HPE AHS 最近 7 天）。
+	Range Range `json:"range,omitzero"`
+}
+
+// Range 是时间段，RFC 3339 格式。
+type Range struct {
+	From string `json:"from,omitempty"`
+	To   string `json:"to,omitempty"`
 }
 
 // Job 是一次收集，驱动通过它拿到设备连接、报告进度、保存文件。
@@ -77,6 +85,8 @@ type Job struct {
 	Redfish *redfish.Client
 	// Manager 是第一个管理器资源（含 Actions），识别时已读到。
 	Manager *redfish.Resource
+	// System 是第一个系统资源，识别时已读到；读不到时为空资源。
+	System *redfish.Resource
 
 	// BaseURL 是设备地址，例如 https://10.0.0.10。
 	BaseURL string
@@ -85,6 +95,10 @@ type Job struct {
 	UserAgent  string
 	User       string
 	Password   string
+
+	// AcceptEULA 为 true 时，Dell iDRAC 还没接受 SupportAssist 许可协议的，由工具代为接受。
+	// 这会改动设备设置，只在用户明确同意时打开。
+	AcceptEULA bool
 
 	Store *Store
 	// Progress 接收进度，可为 nil。
@@ -102,6 +116,14 @@ func (j *Job) Report(stage Stage, percent int, message string) {
 	if j.Progress != nil {
 		j.Progress(Event{Stage: stage, Percent: percent, Message: message})
 	}
+}
+
+// Now 返回当前时间，回放测试里是固定的时间。
+func (j *Job) Now() time.Time {
+	if j.Store != nil {
+		return j.Store.now()
+	}
+	return time.Now()
 }
 
 // Wait 等待 d，ctx 取消时提前返回。
@@ -123,7 +145,7 @@ func (j *Job) Wait(ctx context.Context, d time.Duration) error {
 type Driver interface {
 	// Name 是驱动名，例如 "huawei-ibmc"，用于命令行 --brand 和诊断记录。
 	Name() string
-	// Collect 生成并下载日志包，通过 j.Store.Save 保存。
+	// Collect 生成并下载日志包，通过 j.Save 保存。
 	// 取消时只停止本地等待，不去中断设备端的生成任务。
 	Collect(ctx context.Context, j *Job) (*Result, error)
 }
