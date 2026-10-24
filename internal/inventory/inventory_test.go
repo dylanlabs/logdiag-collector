@@ -300,3 +300,62 @@ func TestExport(t *testing.T) {
 		t.Errorf("新库里没有“模板”这个凭据模板，应报错并仍显示设备信息：%+v", r)
 	}
 }
+
+func TestOSCredentialsAndHostKey(t *testing.T) {
+	dir := t.TempDir()
+	s := openStore(t, dir)
+	d, err := s.Add(Patch{
+		Customer: ptr("客户"), HostIP: ptr("10.0.0.20"), Type: ptr("server"),
+		OSUser: ptr("ops"), OSPassword: ptr("os-s3cret"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !d.HasOSPassword || d.OSUser != "ops" {
+		t.Errorf("OS 账号没保存：%+v", d)
+	}
+	// 明文 OS 密码不落盘、不进 List。
+	if data, _ := os.ReadFile(filepath.Join(dir, "devices.json")); bytes.Contains(data, []byte("os-s3cret")) {
+		t.Fatal("devices.json 里出现了明文 OS 密码")
+	}
+	a, err := s.OSAccess(d.ID)
+	if err != nil || a.User != "ops" || a.Password != "os-s3cret" {
+		t.Fatalf("OSAccess = %+v，err=%v", a, err)
+	}
+
+	// 记录主机密钥：首次写入，之后不覆盖。
+	s.SetSSHHostKey(d.ID, "256 SHA256:AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKK root@h (ED25519)")
+	got, _ := s.Get(d.ID)
+	if got.SSHHostKey != "SHA256:AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKK" {
+		t.Errorf("主机密钥没有规整保存：%q", got.SSHHostKey)
+	}
+	s.SetSSHHostKey(d.ID, "SHA256:ZZZZ")
+	if got, _ := s.Get(d.ID); got.SSHHostKey != "SHA256:AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKK" {
+		t.Error("已有主机密钥不应被覆盖")
+	}
+
+	// 改了主机 IP（服务器的 SSH 地址）后，记录的主机密钥自动清除。
+	if _, err := s.Update([]string{d.ID}, Patch{HostIP: ptr("10.0.0.21")}); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := s.Get(d.ID); got.SSHHostKey != "" {
+		t.Errorf("改了主机 IP 应清除主机密钥，仍是 %q", got.SSHHostKey)
+	}
+
+	// 对服务器来说，改管理口 IP 不影响 SSH 主机密钥。
+	s.SetSSHHostKey(d.ID, "SHA256:KEEPKEEPKEEP")
+	if _, err := s.Update([]string{d.ID}, Patch{MgmtIP: ptr("10.1.0.9")}); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := s.Get(d.ID); got.SSHHostKey != "SHA256:KEEPKEEPKEEP" {
+		t.Errorf("服务器改管理口 IP 不应清除 SSH 主机密钥，却变成 %q", got.SSHHostKey)
+	}
+
+	// 清除 OS 密码。
+	if _, err := s.Update([]string{d.ID}, Patch{OSPassword: ptr("")}); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := s.Get(d.ID); got.HasOSPassword {
+		t.Error("传空字符串应清除 OS 密码")
+	}
+}

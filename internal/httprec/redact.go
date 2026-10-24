@@ -48,13 +48,13 @@ func (a addr) scrub(s string) string {
 		s = strings.ReplaceAll(s, a.base, BasePlaceholder)
 	}
 	if a.host != "" {
-		s = replaceHost(s, a.host, HostPlaceholder)
+		s = ReplaceHost(s, a.host, HostPlaceholder)
 	}
 	return s
 }
 
-// replaceHost 只替换完整出现的主机名，避免把 10.0.0.10 里的 10.0.0.1 换掉。
-func replaceHost(s, host, repl string) string {
+// ReplaceHost 只替换完整出现的主机名，避免把 10.0.0.10 里的 10.0.0.1 换掉。
+func ReplaceHost(s, host, repl string) string {
 	var b strings.Builder
 	for {
 		i := strings.Index(s, host)

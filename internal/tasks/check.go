@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/dylanlabs/logdiag-collector/internal/buildinfo"
+	"github.com/dylanlabs/logdiag-collector/internal/collect/netdev"
 	"github.com/dylanlabs/logdiag-collector/internal/drivers"
 	"github.com/dylanlabs/logdiag-collector/internal/inventory"
 	"github.com/dylanlabs/logdiag-collector/internal/redfish"
@@ -22,7 +23,7 @@ import (
 // 识别要登录，并发少一些，免得同时打开太多 BMC 会话。
 const identifyConcurrency = 4
 
-// Check 在后台匿名检查设备的连通状态：先连管理口端口，再读 Redfish 服务根。
+// Check 在后台匿名检查设备的连通状态：先连管理口端口，再读 Redfish 服务根；网络设备读 SSH 版本标识。
 // 不登录、不产生审计日志。返回开始检查的设备数。
 func (m *Manager) Check(ids []string) int {
 	var started []string
@@ -63,7 +64,13 @@ func (m *Manager) checkOne(id string) {
 		return
 	}
 	reach, msg := inventory.ReachUnknown, "没有填写管理口 IP"
-	if dev.MgmtIP != "" && m.ctx.Err() == nil {
+	switch {
+	case dev.MgmtIP == "" || m.ctx.Err() != nil:
+	case dev.Type == inventory.TypeNetwork:
+		ctx, cancel := context.WithTimeout(m.ctx, 30*time.Second)
+		reach, msg = m.o.CheckSSH(ctx, dev.MgmtIP)
+		cancel()
+	default:
 		ctx, cancel := context.WithTimeout(m.ctx, 30*time.Second)
 		hc := redfish.NewHTTPClient(redfish.TransportOptions{Legacy: dev.LegacyTLS})
 		reach, msg = m.o.Check(ctx, dev.MgmtIP, hc)
@@ -79,7 +86,8 @@ func (m *Manager) checkOne(id string) {
 	m.publishDevice(d, ok)
 }
 
-// Identify 在后台登录设备，读取品牌、型号、序列号、主机名和 BMC 固件回填到设备表，然后退出会话。
+// Identify 在后台登录设备，读取品牌、型号、序列号、主机名和 BMC 固件（网络设备是系统版本）回填到设备表，
+// 然后退出会话。
 // 正在收集、缺少账号密码或上次认证失败（账号密码没改过）的设备不登录，原因在返回值里。
 func (m *Manager) Identify(ids []string) (started int, skipped []Skip) {
 	type job struct {
@@ -129,15 +137,22 @@ func (m *Manager) identifyOne(id string, a inventory.Access) {
 	defer cancel()
 	hc := redfish.NewHTTPClient(redfish.TransportOptions{Legacy: a.Device.LegacyTLS})
 	defer hc.CloseIdleConnections()
-	ident, err := m.o.Identify(ctx, drivers.Request{
+	req := drivers.Request{
 		Address: a.Device.MgmtIP, User: a.User, Password: a.Password,
 		HTTPClient: hc, UserAgent: buildinfo.UserAgent(), Sleep: m.o.Sleep,
-	})
+	}
+	if a.Device.Type == inventory.TypeNetwork {
+		req.Type, req.Enable, req.HostKey = netdev.DeviceType, a.Enable, a.Device.SSHHostKey
+	}
+	ident, err := m.o.Identify(ctx, req)
 	now := time.Now()
 	if err == nil {
 		m.o.Devices.SetIdentity(id, inventory.Identity{
 			Vendor: ident.Vendor(), Model: ident.Model, Serial: ident.Serial, Hostname: ident.Hostname, Firmware: ident.Firmware,
 		})
+		if ident.SSHHostKey != "" {
+			m.o.Devices.SetSSHHostKey(id, ident.SSHHostKey)
+		}
 		msg := ""
 		if ident.Brand.Key == "" {
 			msg = "已登录，但这个品牌暂不支持一键收集（已支持：" + SupportedText() + "）"
@@ -163,7 +178,7 @@ func (m *Manager) identifyOne(id string, a inventory.Access) {
 		if kind == redfish.KindNetwork {
 			s.Reach, s.ReachMessage, s.CheckedAt = inventory.ReachUnreachable, describeNetErr(err), now
 		}
-		s.LoginMessage, s.LoginAt = kind.String()+"："+err.Error()+"。"+kind.Hint(), now
+		s.LoginMessage, s.LoginAt = kind.String()+"："+err.Error()+"。"+redfish.Advice(err), now
 	})
 	m.publishDevice(d, ok)
 }

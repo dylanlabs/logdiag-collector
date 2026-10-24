@@ -2,7 +2,7 @@
 
 面向数据中心运维和服务工程师的免费开源工具：管理设备的管理口信息，一键收集服务器 BMC、存储、网络设备的日志包，再交给 [LogDiag](https://logdiag.com) 分析。
 
-> **状态：开发中，尚未发布可用版本。** 已能对华为、超聚变、浪潮、联想、Dell、HPE 服务器一键收集日志包（都还在等真机验证）。界面的设备列表、日志收集、收集结果、设置四页可用，健康与告警、OS 巡检只有页面布局。
+> **状态：开发中，尚未发布可用版本。** 已能对华为、超聚变、浪潮、联想、Dell、HPE 服务器一键收集日志包，对思科、华为、新华三网络设备收集诊断信息（都在等真机验证，网络设备目前只用模拟设备测过）；Linux 服务器的 OS 巡检已能通过命令行完成（界面接入中）。界面的设备列表、日志收集、收集结果、设置四页可用，健康与告警、OS 巡检页面接入中。
 
 ## 计划支持的设备
 
@@ -78,7 +78,7 @@ LogDiagCollector.exe version               显示版本
 LogDiagCollector.exe help                  查看全部命令
 ```
 
-密码会提示输入（不回显），也可以事先放在环境变量 `LOGDIAG_PASSWORD` 里。在 cmd、PowerShell 里运行 `probe`、`collect` 时会另开一个命令行窗口（输入密码、显示进度，结束后按回车关闭）；在脚本或 Git Bash 里运行、或者把输出重定向到文件时，输入输出走原来的窗口。
+密码会提示输入（不回显），也可以事先放在环境变量 `LOGDIAG_PASSWORD` 里（网络设备的 enable 密码是 `LOGDIAG_ENABLE_PASSWORD`）。在 cmd、PowerShell 里运行 `probe`、`collect` 时会另开一个命令行窗口（输入密码、显示进度，结束后按回车关闭）；在脚本或 Git Bash 里运行、或者把输出重定向到文件时，输入输出走原来的窗口。
 
 `probe` 只读探测一台设备的 Redfish 接口：显示 Redfish 版本、型号、序列号、固件版本、设备支持的日志动作，以及各厂商收集日志包的入口（Dell 的 DellLCService、HPE 的 AHS、联想的 ServiceData）。它只调用读取类接口，不触发收集、不修改设备。不填 `--user` 时只匿名读取服务根，不登录、不产生审计日志。
 
@@ -163,6 +163,7 @@ scripts/build.sh v0.1.0            # 编译带版本资源的 Windows exe 到 di
 各品牌接口靠两层测试保证：
 
 - **回放测试**：`internal/redfish/testdata/` 里是录制下来的接口往返，测试时代替真实设备，每次提交自动运行。每份记录的 `note` 字段写明它是真机录制还是按文档合成的。
+- **模拟网络设备**：`internal/netsim` 按厂商文档模拟思科、华为、新华三的 SSH 命令行（分页、enable、提问、诊断信息输出），网络设备的端到端测试和 `internal/drivers/testdata/*.netrec.json` 的合成记录都由它生成。`go run ./cmd/netsim` 可以在本机起几台模拟设备，在界面里添加试用。模拟设备的输出是合成的，不能代替真机验证。
 - **真机验证**：只能在能访问管理网的电脑上进行。用 `probe --record` 和 `collect --record` 录下真机的响应，检查后放进对应的 `testdata/`（整机收集流程在 `internal/drivers/testdata/`），再写回放测试。
 
 自动回放通过不等于真机验收；已在真机上验证的品牌、型号和固件会写在发布说明里。
@@ -178,6 +179,10 @@ internal/collect/inspur/ 浪潮 M5/M6/M7 驱动
 internal/collect/lenovo/ 联想 XCC/XCC2/XCC3 驱动
 internal/collect/dell/   Dell iDRAC9/10 驱动
 internal/collect/hpe/    HPE iLO 5/6 驱动
+internal/oscheck/        OS 巡检：SSH 上传脚本、root/sudo 运行、取回结果（内置巡检脚本）
+internal/sshx/           SSH 连接、防锁号认证、主机密钥核对、执行命令与诊断记录
+internal/collect/netdev/ 网络设备收集：SSH 命令行、按系统（IOS、NX-OS、ASA、VRP、Comware）选命令、脱敏
+internal/netsim/         模拟网络设备的 SSH 命令行，供测试和演示
 internal/redfish/        Redfish 会话、请求、任务轮询、文件下载
 internal/httprec/        HTTP 录制与回放（诊断记录和回放测试共用）
 internal/ui/             本机界面服务和接口

@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/dylanlabs/logdiag-collector/internal/sshx"
 )
 
 // ErrTimeout 表示等待设备超过了设定的时间。
@@ -18,6 +20,9 @@ var ErrTimeout = errors.New("等待设备超时")
 
 // ErrUnsupported 表示设备没有驱动需要的接口，驱动用 %w 包装它。
 var ErrUnsupported = errors.New("设备不支持此操作")
+
+// ErrPermission 表示账号权限不够（例如网络设备的账号进不了特权模式），驱动用 %w 包装它。
+var ErrPermission = errors.New("账号权限不足")
 
 // Kind 是面向用户的失败分类，每类都对应一条“该怎么做”。
 type Kind int
@@ -33,6 +38,7 @@ const (
 	KindTaskFailed       // 设备端任务失败
 	KindCanceled         // 用户取消
 	KindConsent          // 需要用户确认，例如 Dell 的 SupportAssist 许可协议
+	KindHostKey          // SSH 主机密钥和记录的不一致
 )
 
 var kindText = map[Kind][2]string{
@@ -46,6 +52,7 @@ var kindText = map[Kind][2]string{
 	KindTaskFailed:  {"设备端任务失败", "查看设备返回的信息；如反复失败，导出诊断记录发给开发者。"},
 	KindCanceled:    {"已取消", "设备端可能仍在生成，稍后可再次收集。"},
 	KindConsent:     {"需要确认", "按提示确认后重试。"},
+	KindHostKey:     {"主机密钥不符", "服务器的 SSH 主机密钥和上次记录的不一样：可能重装过系统，也可能有人冒充这台服务器。确认无误后在设备里清除记录的主机密钥再试。"},
 }
 
 // String 返回分类名称。
@@ -65,6 +72,7 @@ func KindOf(err error) Kind {
 		taskErr *TaskError
 		netErr  net.Error
 		urlErr  *url.Error
+		hostKey *sshx.HostKeyError
 	)
 	switch {
 	case errors.As(err, &hintErr) && hintErr.Kind != KindUnknown:
@@ -75,8 +83,16 @@ func KindOf(err error) Kind {
 		return KindCanceled
 	case errors.Is(err, ErrUnsupported):
 		return KindUnsupported
+	case errors.Is(err, ErrPermission):
+		return KindPermission
 	case errors.As(err, &taskErr):
 		return KindTaskFailed
+	case errors.Is(err, sshx.ErrAuth):
+		return KindAuth
+	case errors.As(err, &hostKey):
+		return KindHostKey
+	case errors.Is(err, sshx.ErrNoPassword), errors.Is(err, sshx.ErrAlgorithms):
+		return KindUnsupported
 	case errors.As(err, &httpErr):
 		switch httpErr.StatusCode {
 		case http.StatusUnauthorized:

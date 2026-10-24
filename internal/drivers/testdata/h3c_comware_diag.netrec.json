@@ -1,0 +1,65 @@
+{
+  "format": "logdiag.netrec/1",
+  "note": "合成：netsim 模拟的新华三 S6850-56HF（Comware 7.1.070），不是真机。依据新华三 Comware 7 基础配置命令参考（screen-length disable、display version、display device manuinfo、display logbuffer、display diagnostic-information）。诊断信息命令询问保存还是显示时答 N（显示）。",
+  "tool": "netsim",
+  "recorded_at": "2026-10-24T10:00:00+08:00",
+  "server_version": "SSH-2.0-Comware-7.1.064",
+  "host_key": "ssh-ed25519 SHA256:4BCPLPsv8nMFpOiQ/tG39zL6d1RUQHrPoLNSRau4g4U",
+  "steps": [
+    {
+      "at_ms": 0,
+      "output": {
+        "text": "\r\n******************************************************************************\r\n* Copyright (c) 2004-2021 New H3C Technologies Co., Ltd. All rights reserved.*\r\n* Without the owner's prior written consent,                                 *\r\n* no decompiling or reverse-engineering shall be allowed.                    *\r\n******************************************************************************\r\n\r\n\u003cH3C-S6850-01\u003e"
+      }
+    },
+    {
+      "send": "\n",
+      "at_ms": 30,
+      "output": {
+        "text": "\r\n\u003cH3C-S6850-01\u003e"
+      }
+    },
+    {
+      "send": "screen-length disable\n",
+      "at_ms": 60,
+      "output": {
+        "text": "screen-length disable\r\n\u003cH3C-S6850-01\u003e"
+      }
+    },
+    {
+      "send": "display version\n",
+      "at_ms": 91,
+      "output": {
+        "text": "display version\r\nH3C Comware Software, Version 7.1.070, Release 6728P22\r\nCopyright (c) 2004-2021 New H3C Technologies Co., Ltd. All rights reserved.\r\nH3C S6850-56HF uptime is 0 weeks, 3 days, 4 hours, 5 minutes\r\nLast reboot reason : User reboot\r\n\r\nBoot image: flash:/S6850-CMW710-BOOT-R6728P22.bin\r\nBoot image version: 7.1.070, Release 6728P22\r\n  Compiled Apr 18 2021 15:00:00\r\nSystem image: flash:/S6850-CMW710-SYSTEM-R6728P22.bin\r\nSystem image version: 7.1.070, Release 6728P22\r\n  Compiled Apr 18 2021 15:00:00\r\n\r\nSlot 1:\r\nUptime is 0 weeks,3 days,4 hours,5 minutes\r\nS6850-56HF with 4 Processors\r\nBOARD TYPE:         S6850-56HF\r\nDRAM:               8192M bytes\r\nFLASH:              4096M bytes\r\nPCB 1 Version:      VER.B\r\nBootrom Version:    143\r\nCPLD 1 Version:     002\r\nRelease Version:    H3C S6850-56HF-6728P22\r\nPatch Version  :    None\r\nReboot Cause  :     UserReboot\r\n[SubSlot 0] 48SFP Plus+8QSFP28\r\n\u003cH3C-S6850-01\u003e"
+      }
+    },
+    {
+      "send": "display device manuinfo\n",
+      "at_ms": 122,
+      "output": {
+        "text": "display device manuinfo\r\nSlot 1 CPU 0:\r\nDEVICE_NAME          : S6850-56HF\r\nDEVICE_SERIAL_NUMBER : 210235A2FSHSYNTH0001\r\nMAC_ADDRESS          : 0011-2233-4466\r\nMANUFACTURING_DATE   : 2019-06-12\r\nVENDOR_NAME          : H3C\r\n\r\nFan 1:\r\nDEVICE_NAME          : FAN-40B-1-A\r\nDEVICE_SERIAL_NUMBER : 210231A1SYNTHFAN01\r\nMANUFACTURING_DATE   : 2019-05-20\r\nVENDOR_NAME          : H3C\r\n\u003cH3C-S6850-01\u003e"
+      }
+    },
+    {
+      "send": "display logbuffer\n",
+      "at_ms": 153,
+      "output": {
+        "text": "display logbuffer\r\nLog buffer: Enabled\r\nMax buffer size: 1024\r\nActual buffer size: 512\r\nDropped messages: 0\r\nOverwritten messages: 0\r\nCurrent messages: 3\r\n%Oct 26 13:52:10:123 2026 H3C-S6850-01 IFNET/3/PHY_UPDOWN: Physical state on the interface Ten-GigabitEthernet1/0/24 changed to down.\r\n%Oct 26 13:57:02:881 2026 H3C-S6850-01 DEV/2/FAN_ABSENT: -Slot=1; Fan 2 is absent.\r\n%Oct 26 13:58:40:002 2026 H3C-S6850-01 SHELL/5/SHELL_LOGIN: admin logged in from 10.20.0.99.\r\n\u003cH3C-S6850-01\u003e"
+      }
+    },
+    {
+      "send": "display diagnostic-information\n",
+      "at_ms": 184,
+      "output": {
+        "text": "display diagnostic-information\r\nSave or display diagnostic information (Y=save, N=display)? [Y/N] :"
+      }
+    },
+    {
+      "send": "n\n",
+      "at_ms": 265,
+      "output": {
+        "text": "n\r\n\r\n===============================================\r\n  ===============display clock===============\r\n===============================================\r\n\r\n2026-10-26 14:03:11+08:00\r\nMonday\r\nTime Zone(DefaultZoneName) : UTC+08:00\r\n\r\n===============================================\r\n  ===============display version===============\r\n===============================================\r\n\r\nH3C Comware Software, Version 7.1.070, Release 6728P22\r\nCopyright (c) 2004-2021 New H3C Technologies Co., Ltd. All rights reserved.\r\nH3C S6850-56HF uptime is 0 weeks, 3 days, 4 hours, 5 minutes\r\nLast reboot reason : User reboot\r\n\r\nBoot image: flash:/S6850-CMW710-BOOT-R6728P22.bin\r\nBoot image version: 7.1.070, Release 6728P22\r\n  Compiled Apr 18 2021 15:00:00\r\nSystem image: flash:/S6850-CMW710-SYSTEM-R6728P22.bin\r\nSystem image version: 7.1.070, Release 6728P22\r\n  Compiled Apr 18 2021 15:00:00\r\n\r\nSlot 1:\r\nUptime is 0 weeks,3 days,4 hours,5 minutes\r\nS6850-56HF with 4 Processors\r\nBOARD TYPE:         S6850-56HF\r\nDRAM:               8192M bytes\r\nFLASH:              4096M bytes\r\nPCB 1 Version:      VER.B\r\nBootrom Version:    143\r\nCPLD 1 Version:     002\r\nRelease Version:    H3C S6850-56HF-6728P22\r\nPatch Version  :    None\r\nReboot Cause  :     UserReboot\r\n[SubSlot 0] 48SFP Plus+8QSFP28\r\n\r\n===============================================\r\n  ===============display current-configuration===============\r\n===============================================\r\n\r\n#\r\n version 7.1.070, Release 6728P22\r\n#\r\n sysname H3C-S6850-01\r\n#\r\n password-recovery enable\r\n#\r\nlocal-user admin class manage\r\n password hash ******\r\n service-type ssh\r\n authorization-attribute user-role network-admin\r\n#\r\nsuper password role network-admin hash ******\r\n#\r\nradius scheme rad1\r\n primary authentication 10.20.0.61\r\n key authentication cipher ******\r\n#\r\nhwtacacs scheme tac1\r\n primary authentication 10.20.0.60\r\n key authentication simple ******\r\n#\r\n snmp-agent\r\n snmp-agent community read simple ******\r\n snmp-agent community write cipher ******\r\n snmp-agent sys-info version v2c v3\r\n snmp-agent target-host trap address udp-domain 10.20.0.50 params securityname ****** v2c\r\n snmp-agent usm-user v3 snmpv3 group1 simple authentication-mode sha ****** privacy-mode aes128 ******\r\n#\r\nreturn\r\n\r\n===============================================\r\nCollecting data, please wait ... done\r\n  ===============display device manuinfo===============\r\n===============================================\r\n\r\nSlot 1 CPU 0:\r\nDEVICE_NAME          : S6850-56HF\r\nDEVICE_SERIAL_NUMBER : 210235A2FSHSYNTH0001\r\nMAC_ADDRESS          : 0011-2233-4466\r\nMANUFACTURING_DATE   : 2019-06-12\r\nVENDOR_NAME          : H3C\r\n\r\nFan 1:\r\nDEVICE_NAME          : FAN-40B-1-A\r\nDEVICE_SERIAL_NUMBER : 210231A1SYNTHFAN01\r\nMANUFACTURING_DATE   : 2019-05-20\r\nVENDOR_NAME          : H3C\r\n\r\n===============================================\r\n  ===============display device===============\r\n===============================================\r\n\r\nSlot  Card   Type               Online   Power Register     Alarm     Primary\r\n1     -      CE6850-48S6Q-HI    Present  On    Registered   Normal    Master\r\nFAN1  -      FAN-40SB-B         Present  On    Registered   Normal    NA\r\nFAN2  -      FAN-40SB-B         Absent   -     -            -         NA\r\n\r\n===============================================\r\n  ===============display interface brief===============\r\n===============================================\r\n\r\nXGE1/0/1             up     up       0.10%   0.10%          1          1\r\n  Input:  100000 packets, 64000000 bytes; CRC: 1, Giants: 0, Runts: 0\r\n  Output: 90000 packets, 58000000 bytes; Discard: 0\r\nXGE1/0/2             up     up       0.20%   0.20%          2          2\r\n  Input:  200000 packets, 128000000 bytes; CRC: 2, Giants: 0, Runts: 0\r\n  Output: 180000 packets, 116000000 bytes; Discard: 0\r\nXGE1/0/3             up     up       0.30%   0.30%          3          0\r\n  Input:  300000 packets, 192000000 bytes; CRC: 3, Giants: 0, Runts: 0\r\n  Output: 270000 packets, 174000000 bytes; Discard: 0\r\nXGE1/0/4             up     up       0.40%   0.40%          4          1\r\n  Input:  400000 packets, 256000000 bytes; CRC: 4, Giants: 0, Runts: 0\r\n  Output: 360000 packets, 232000000 bytes; Discard: 0\r\nXGE1/0/5             up     up       0.50%   0.50%          0          2\r\n  Input:  500000 packets, 320000000 bytes; CRC: 0, Giants: 0, Runts: 0\r\n  Output: 450000 packets, 290000000 bytes; Discard: 0\r\nXGE1/0/6             up     up       0.60%   0.60%          1          0\r\n  Input:  600000 packets, 384000000 bytes; CRC: 1, Giants: 0, Runts: 0\r\n  Output: 540000 packets, 348000000 bytes; Discard: 0\r\nXGE1/0/7             up     up       0.70%   0.00%          2          1\r\n  Input:  700000 packets, 448000000 bytes; CRC: 2, Giants: 0, Runts: 0\r\n  Output: 630000 packets, 406000000 bytes; Discard: 0\r\nXGE1/0/8             up     up       0.80%   0.10%          3          2\r\n  Input:  800000 packets, 512000000 bytes; CRC: 3, Giants: 0, Runts: 0\r\n  Output: 720000 packets, 464000000 bytes; Discard: 0\r\n\r\n===============================================\r\n  ===============display logbuffer===============\r\n===============================================\r\n\r\nLog buffer: Enabled\r\nMax buffer size: 1024\r\nActual buffer size: 512\r\nDropped messages: 0\r\nOverwritten messages: 0\r\nCurrent messages: 3\r\n%Oct 26 13:52:10:123 2026 H3C-S6850-01 IFNET/3/PHY_UPDOWN: Physical state on the interface Ten-GigabitEthernet1/0/24 changed to down.\r\n%Oct 26 13:57:02:881 2026 H3C-S6850-01 DEV/2/FAN_ABSENT: -Slot=1; Fan 2 is absent.\r\n%Oct 26 13:58:40:002 2026 H3C-S6850-01 SHELL/5/SHELL_LOGIN: admin logged in from 10.20.0.99.\r\n\r\n===============================================\r\n  ===============display history-command===============\r\n===============================================\r\n\r\n\u003cH3C-S6850-01\u003e\r\n  display version\r\n  display diagnostic-information\r\n\u003cH3C-S6850-01\u003e"
+      }
+    }
+  ]
+}

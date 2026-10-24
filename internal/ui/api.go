@@ -20,8 +20,10 @@ import (
 	"github.com/dylanlabs/logdiag-collector/internal/appdata"
 	"github.com/dylanlabs/logdiag-collector/internal/buildinfo"
 	"github.com/dylanlabs/logdiag-collector/internal/collect"
+	"github.com/dylanlabs/logdiag-collector/internal/collect/netdev"
 	"github.com/dylanlabs/logdiag-collector/internal/inventory"
 	"github.com/dylanlabs/logdiag-collector/internal/results"
+	"github.com/dylanlabs/logdiag-collector/internal/sshx"
 	"github.com/dylanlabs/logdiag-collector/internal/tasks"
 	"github.com/dylanlabs/logdiag-collector/internal/update"
 	"github.com/dylanlabs/logdiag-collector/internal/xlsx"
@@ -152,6 +154,7 @@ func (a *App) state(w http.ResponseWriter, r *http.Request) (any, error) {
 		"secret_method": a.SecretMethod,
 		"warnings":      a.Warnings,
 		"supported":     tasks.SupportedText(),
+		"supported_net": tasks.NetworkSupportedText(),
 	}, nil
 }
 
@@ -424,19 +427,31 @@ func (a *App) clearTasks(w http.ResponseWriter, r *http.Request) (any, error) {
 }
 
 func (a *App) taskRecord(w http.ResponseWriter, r *http.Request) (any, error) {
-	c, t, err := a.Tasks.Record(r.PathValue("id"))
+	rec, t, err := a.Tasks.Record(r.PathValue("id"))
 	if err != nil {
 		return nil, &userError{http.StatusNotFound, err.Error()}
 	}
-	data, err := json.MarshalIndent(c, "", "  ")
+	data, err := json.MarshalIndent(rec, "", "  ")
 	if err != nil {
 		return nil, err
 	}
-	// 文件名不带设备 IP：诊断记录常被附在公开的反馈里。
-	suffix := t.CreatedAt.Format("20060102-150405") + ".json"
+	// 文件名不带设备 IP：诊断记录常被附在公开的反馈里。扩展名区分记录格式，回放工具按它选择读法。
+	suffix := t.CreatedAt.Format("20060102-150405") + recordExt(rec)
 	attachment(w, "诊断记录-"+suffix, "diagnostic-record-"+suffix, "application/json")
 	_, err = w.Write(append(data, '\n'))
 	return nil, err
+}
+
+// recordExt 是诊断记录文件的扩展名：服务器的 HTTP 记录 .json，网络设备的命令行记录 .netrec.json，
+// SSH 会话记录 .sshrec.json。
+func recordExt(rec any) string {
+	switch rec.(type) {
+	case *netdev.Record:
+		return ".netrec.json"
+	case *sshx.Record:
+		return ".sshrec.json"
+	}
+	return ".json"
 }
 
 func (a *App) listResults(w http.ResponseWriter, r *http.Request) (any, error) {

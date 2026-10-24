@@ -43,6 +43,8 @@ type Result struct {
 	Dir      string // 设备文件夹
 	Path     string // 主日志包
 	Manifest Manifest
+	// SSHHostKey 是通过 SSH 收集时设备的主机密钥指纹（SHA256:…），首次连接后由调用方保存，下次核对。
+	SSHHostKey string
 }
 
 func (s *Store) now() time.Time {
@@ -125,11 +127,14 @@ func (j *Job) Save(log Log, name string, fetch func(w io.Writer) error, extras .
 			Serial:     j.Device.Serial,
 			Hostname:   j.Device.Hostname,
 			MgmtIP:     j.Device.Address,
+			HostIP:     j.Device.HostIP,
+			OS:         j.Device.OS,
 			Controller: j.Device.Controller,
 		},
 		Log:   log,
 		Files: files,
 	}
+	m.Redaction = j.Redaction
 	data, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		return nil, err

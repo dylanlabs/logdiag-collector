@@ -32,6 +32,8 @@ type ManifestDevice struct {
 	Serial     string     `json:"serial"`
 	Hostname   string     `json:"hostname,omitempty"`
 	MgmtIP     string     `json:"mgmt_ip,omitempty"`
+	HostIP     string     `json:"host_ip,omitempty"` // 系统地址（OS 巡检用）
+	OS         string     `json:"os,omitempty"`      // 操作系统，例如 Rocky Linux 9.4
 	Controller Controller `json:"controller"`
 }
 

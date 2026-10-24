@@ -27,6 +27,7 @@ import (
 
 	"github.com/dylanlabs/logdiag-collector/internal/appdata"
 	"github.com/dylanlabs/logdiag-collector/internal/secret"
+	"github.com/dylanlabs/logdiag-collector/internal/sshx"
 )
 
 // FileFormat 是 devices.json 的格式标识。
@@ -86,32 +87,38 @@ type LastCollect struct {
 
 // Device 是设备库里的一台设备。界面拿到的就是这个结构，不含密码。
 type Device struct {
-	ID           string       `json:"id"`
-	Customer     string       `json:"customer"`
-	Type         string       `json:"type"`
-	Vendor       string       `json:"vendor"`
-	Model        string       `json:"model"`
-	Serial       string       `json:"serial"`
-	Hostname     string       `json:"hostname"`
-	HostIP       string       `json:"host_ip"`
-	OS           string       `json:"os"`
-	MgmtIP       string       `json:"mgmt_ip"`
-	User         string       `json:"user"`
-	CredentialID string       `json:"credential_id,omitempty"`
-	Firmware     string       `json:"firmware"`
-	Location     string       `json:"location"`
-	Notes        string       `json:"notes"`
-	LegacyTLS    bool         `json:"legacy_tls"`
-	HasPassword  bool         `json:"has_password"`
-	Status       Status       `json:"status"`
-	LastCollect  *LastCollect `json:"last_collect,omitempty"`
-	CreatedAt    time.Time    `json:"created_at"`
-	UpdatedAt    time.Time    `json:"updated_at"`
+	ID            string       `json:"id"`
+	Customer      string       `json:"customer"`
+	Type          string       `json:"type"`
+	Vendor        string       `json:"vendor"`
+	Model         string       `json:"model"`
+	Serial        string       `json:"serial"`
+	Hostname      string       `json:"hostname"`
+	HostIP        string       `json:"host_ip"`
+	OS            string       `json:"os"`
+	MgmtIP        string       `json:"mgmt_ip"`
+	User          string       `json:"user"`
+	CredentialID  string       `json:"credential_id,omitempty"`
+	OSUser        string       `json:"os_user"`                // 操作系统账号（OS 巡检用，SSH 登录）
+	SSHHostKey    string       `json:"ssh_host_key,omitempty"` // 记下的 SSH 主机密钥指纹，用于核对是否被冒充
+	Firmware      string       `json:"firmware"`
+	Location      string       `json:"location"`
+	Notes         string       `json:"notes"`
+	LegacyTLS     bool         `json:"legacy_tls"`
+	HasPassword   bool         `json:"has_password"`
+	HasOSPassword bool         `json:"has_os_password"`
+	HasEnable     bool         `json:"has_enable"` // 网络设备填了 enable 密码
+	Status        Status       `json:"status"`
+	LastCollect   *LastCollect `json:"last_collect,omitempty"`
+	CreatedAt     time.Time    `json:"created_at"`
+	UpdatedAt     time.Time    `json:"updated_at"`
 }
 
 type deviceRecord struct {
 	Device
-	Password string `json:"password,omitempty"` // 密文
+	Password   string `json:"password,omitempty"`    // 管理口密码密文
+	OSPassword string `json:"os_password,omitempty"` // 操作系统账号密码密文
+	Enable     string `json:"enable,omitempty"`      // 网络设备 enable 密码密文
 }
 
 // Credential 是凭据模板：同一客户同一批设备常用同一个账号，改密码时只改一处。
@@ -145,6 +152,10 @@ type Patch struct {
 	User         *string `json:"user,omitempty"`
 	Password     *string `json:"password,omitempty"`
 	CredentialID *string `json:"credential_id,omitempty"`
+	OSUser       *string `json:"os_user,omitempty"`
+	OSPassword   *string `json:"os_password,omitempty"`
+	SSHHostKey   *string `json:"ssh_host_key,omitempty"` // 传空字符串即清除记录的主机密钥
+	Enable       *string `json:"enable,omitempty"`       // 网络设备的 enable 密码，空字符串表示清除
 	Location     *string `json:"location,omitempty"`
 	Notes        *string `json:"notes,omitempty"`
 	LegacyTLS    *bool   `json:"legacy_tls,omitempty"`
@@ -211,6 +222,8 @@ func Open(dir string, box secret.Box) (*Store, string, error) {
 			d.Status.Login = LoginUnknown
 		}
 		d.HasPassword = d.Password != ""
+		d.HasOSPassword = d.OSPassword != ""
+		d.HasEnable = d.Enable != ""
 		s.devices = append(s.devices, d)
 	}
 	for _, c := range f.Credentials {
@@ -429,7 +442,7 @@ func (s *Store) Update(ids []string, p Patch) ([]Device, error) {
 			}
 			return nil, err
 		}
-		if c.User != d.User || c.Password != d.Password || c.CredentialID != d.CredentialID {
+		if c.User != d.User || c.Password != d.Password || c.CredentialID != d.CredentialID || c.Enable != d.Enable {
 			// 账号变了，上次的登录结果不再算数。
 			c.Status.Login, c.Status.LoginMessage = LoginUnknown, ""
 		}
@@ -507,6 +520,8 @@ const (
 
 // apply 校验并应用修改。
 func (s *Store) apply(d *deviceRecord, p Patch) error {
+	// 记下改动前的 SSH 地址：地址变了就清掉记录的主机密钥（换了机器，旧指纹不再适用）。
+	oldSSH := d.sshAddr()
 	text := []struct {
 		dst   *string
 		src   *string
@@ -520,6 +535,7 @@ func (s *Store) apply(d *deviceRecord, p Patch) error {
 		{&d.Hostname, p.Hostname, "主机名", maxField},
 		{&d.OS, p.OS, "操作系统", maxField},
 		{&d.User, p.User, "管理口账号", maxField},
+		{&d.OSUser, p.OSUser, "操作系统账号", maxField},
 		{&d.Location, p.Location, "位置", maxField},
 		{&d.Notes, p.Notes, "备注", maxNotes},
 	}
@@ -565,15 +581,31 @@ func (s *Store) apply(d *deviceRecord, p Patch) error {
 		d.CredentialID = id
 	}
 	if p.Password != nil {
-		if utf8.RuneCountInString(*p.Password) > maxPassword {
-			return fmt.Errorf("密码太长（最多 %d 个字符）", maxPassword)
-		}
-		sealed, err := s.box.Seal(*p.Password)
+		sealed, err := s.sealPassword(*p.Password, "管理口密码")
 		if err != nil {
 			return err
 		}
 		d.Password = sealed
 		d.HasPassword = sealed != ""
+	}
+	if p.OSPassword != nil {
+		sealed, err := s.sealPassword(*p.OSPassword, "操作系统密码")
+		if err != nil {
+			return err
+		}
+		d.OSPassword = sealed
+		d.HasOSPassword = sealed != ""
+	}
+	if p.Enable != nil {
+		sealed, err := s.sealPassword(*p.Enable, "enable 密码")
+		if err != nil {
+			return err
+		}
+		d.Enable = sealed
+		d.HasEnable = sealed != ""
+	}
+	if p.SSHHostKey != nil {
+		d.SSHHostKey = sshx.NormalizeFingerprint(*p.SSHHostKey)
 	}
 	if p.LegacyTLS != nil {
 		d.LegacyTLS = *p.LegacyTLS
@@ -581,7 +613,26 @@ func (s *Store) apply(d *deviceRecord, p Patch) error {
 	if d.MgmtIP == "" && d.HostIP == "" {
 		return errors.New("请至少填写管理口 IP 或主机 IP")
 	}
+	// 地址变了且这次没有显式设置主机密钥时，清掉旧指纹。
+	if p.SSHHostKey == nil && d.sshAddr() != oldSSH {
+		d.SSHHostKey = ""
+	}
 	return nil
+}
+
+// sshAddr 是这台设备做 SSH（OS 巡检、网络设备收集）时用的地址：网络设备用管理口，其余用主机 IP。
+func (d *Device) sshAddr() string {
+	if d.Type == TypeNetwork {
+		return d.MgmtIP
+	}
+	return d.HostIP
+}
+
+func (s *Store) sealPassword(plain, name string) (string, error) {
+	if utf8.RuneCountInString(plain) > maxPassword {
+		return "", fmt.Errorf("%s太长（最多 %d 个字符）", name, maxPassword)
+	}
+	return s.box.Seal(plain)
 }
 
 // ParseType 识别设备类型，接受中英文和“机架服务器”“核心交换机”这样的写法；空值按服务器处理。
@@ -675,6 +726,7 @@ type Access struct {
 	Device   Device
 	User     string
 	Password string
+	Enable   string // 网络设备的 enable 密码，可空
 }
 
 // Access 返回设备的账号和密码；设备绑定了凭据模板时用模板里的账号。
@@ -707,7 +759,60 @@ func (s *Store) Access(id string) (Access, error) {
 		return a, err
 	}
 	a.Password = plain
+	if d.Enable != "" {
+		if a.Enable, err = s.box.Open(d.Enable); err != nil {
+			return a, err
+		}
+	}
 	return a, nil
+}
+
+// OSAccess 是 OS 巡检登录一台服务器需要的信息，含明文密码，只在巡检时使用。
+type OSAccess struct {
+	Device   Device
+	User     string
+	Password string
+	HostKey  string // 记录的 SSH 主机密钥指纹，为空表示首次连接
+}
+
+// OSAccess 返回设备的操作系统账号和密码（SSH 登录用），以及记录的主机密钥。
+func (s *Store) OSAccess(id string) (OSAccess, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	d := s.find(id)
+	if d == nil {
+		return OSAccess{}, ErrNotFound
+	}
+	a := OSAccess{Device: d.Device, User: d.OSUser, HostKey: d.SSHHostKey}
+	switch {
+	case d.HostIP == "":
+		return a, errors.New("没有填写主机 IP")
+	case a.User == "":
+		return a, errors.New("没有填写操作系统账号")
+	case d.OSPassword == "":
+		return a, errors.New("没有填写操作系统密码")
+	}
+	plain, err := s.box.Open(d.OSPassword)
+	if err != nil {
+		return a, err
+	}
+	a.Password = plain
+	return a, nil
+}
+
+// SetSSHHostKey 在原来没有记录时写入首次连接到的主机密钥指纹，供下次核对。已有记录时不覆盖。
+func (s *Store) SetSSHHostKey(id, fingerprint string) (Device, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	d := s.find(id)
+	if d == nil {
+		return Device{}, false
+	}
+	if d.SSHHostKey == "" {
+		d.SSHHostKey = sshx.NormalizeFingerprint(fingerprint)
+		s.saveSoon()
+	}
+	return d.Device, true
 }
 
 // SetStatus 修改设备的连通状态，稍后写盘。返回修改后的设备。

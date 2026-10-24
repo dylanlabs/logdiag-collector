@@ -49,6 +49,7 @@ type Options struct {
 	Collect  func(context.Context, drivers.Request) (*collect.Result, error)
 	Identify func(context.Context, drivers.Request) (*drivers.Identity, error)
 	Check    func(ctx context.Context, address string, hc *http.Client) (reach, message string)
+	CheckSSH func(ctx context.Context, address string) (reach, message string) // 网络设备的检查
 	Sleep    func(context.Context, time.Duration) error
 }
 
@@ -89,8 +90,9 @@ type Result struct {
 
 type task struct {
 	Task
-	cancel   context.CancelFunc
-	cassette *httprec.Cassette
+	cancel context.CancelFunc
+	// record 是诊断记录：服务器是 *httprec.Cassette，网络设备是 *netdev.Record。
+	record any
 }
 
 // Skip 是没有开始的设备和原因。
@@ -128,6 +130,9 @@ func New(o Options) *Manager {
 	}
 	if o.Check == nil {
 		o.Check = checkReach
+	}
+	if o.CheckSSH == nil {
+		o.CheckSSH = checkSSH
 	}
 	ctx, stop := context.WithCancel(context.Background())
 	return &Manager{o: o, ctx: ctx, stop: stop, checks: make(chan struct{}, 16), busy: map[string]string{}}
@@ -200,8 +205,13 @@ func (m *Manager) StartCollect(ids []string) (batchID string, started []Task, sk
 		case d.Status.Login == inventory.LoginAuthFailed:
 			skipped = append(skipped, Skip{id, label(d), "上次登录认证失败。为避免账号被锁定，请先修改账号或密码"})
 			continue
+		case d.Type == inventory.TypeNetwork:
+			if d.Vendor != "" && !NetworkSupported(d.Vendor) {
+				skipped = append(skipped, Skip{id, label(d), "暂不支持" + d.Vendor + "网络设备的一键收集（已支持" + NetworkSupportedText() + "）。如果品牌填错了，清空品牌后收集时会自动识别"})
+				continue
+			}
 		case d.Type != "" && d.Type != inventory.TypeServer:
-			skipped = append(skipped, Skip{id, label(d), "目前只支持服务器的一键收集，存储和网络设备会在后续版本支持"})
+			skipped = append(skipped, Skip{id, label(d), "目前只支持服务器和网络设备的一键收集，存储会在后续版本支持"})
 			continue
 		case d.Vendor != "" && !Supported(d.Vendor):
 			skipped = append(skipped, Skip{id, label(d), "暂不支持" + d.Vendor + "的一键收集（已支持" + SupportedText() + "）。如果品牌填错了，清空品牌后收集时会自动识别"})
@@ -315,18 +325,19 @@ func (m *Manager) find(id string) *task {
 	return nil
 }
 
-// Record 返回任务的诊断记录（已去掉密码、令牌和设备 IP）。
-func (m *Manager) Record(id string) (*httprec.Cassette, Task, error) {
+// Record 返回任务的诊断记录（已去掉密码、令牌和设备 IP）：服务器是 *httprec.Cassette，
+// 网络设备是 *netdev.Record。
+func (m *Manager) Record(id string) (any, Task, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	t := m.find(id)
 	switch {
 	case t == nil:
 		return nil, Task{}, errors.New("任务不存在")
-	case t.cassette == nil:
+	case t.record == nil:
 		return nil, t.Task, errors.New("这个任务没有诊断记录：任务还没结束，或设置里关闭了“保留诊断记录”")
 	}
-	return t.cassette, t.Task, nil
+	return t.record, t.Task, nil
 }
 
 func (m *Manager) run(ctx context.Context, t *task) {
@@ -336,15 +347,11 @@ func (m *Manager) run(ctx context.Context, t *task) {
 	defer cancelTimeout()
 	m.publish("task", m.snapshot(t))
 
-	res, rec, err := m.collect(ctx, t, settings)
+	res, record, err := m.collect(ctx, t, settings)
 
 	m.mu.Lock()
-	if rec != nil {
-		c := rec.Cassette()
-		c.Note = "真机录制：LogDiag Collector 界面收集"
-		c.Tool = buildinfo.Get().String()
-		c.RecordedAt = time.Now().Format(time.RFC3339)
-		t.cassette = c
+	if record != nil {
+		t.record = record()
 		t.HasRecord = true
 	}
 	if err == nil {
@@ -368,11 +375,14 @@ func (m *Manager) snapshot(t *task) Task {
 	return t.Task
 }
 
-// collect 执行一次收集。返回的录制器在出错时也有内容，便于导出诊断记录。
-func (m *Manager) collect(ctx context.Context, t *task, settings appdata.Settings) (*collect.Result, *httprec.Recorder, error) {
+// collect 执行一次收集。record 返回诊断记录，出错时也有内容，便于导出；设置里关闭了记录时为 nil。
+func (m *Manager) collect(ctx context.Context, t *task, settings appdata.Settings) (_ *collect.Result, record func() any, _ error) {
 	a, err := m.o.Devices.Access(t.DeviceID)
 	if err != nil {
 		return nil, nil, err
+	}
+	if a.Device.Type == inventory.TypeNetwork {
+		return m.collectNetwork(ctx, t, a, settings)
 	}
 	hc := redfish.NewHTTPClient(redfish.TransportOptions{Legacy: a.Device.LegacyTLS})
 	var rec *httprec.Recorder
@@ -380,7 +390,6 @@ func (m *Manager) collect(ctx context.Context, t *task, settings appdata.Setting
 		rec = httprec.NewRecorder(hc.Transport)
 		hc.Transport = rec
 	}
-	info := buildinfo.Get()
 	m.o.Logger.Info("开始收集", "设备", t.MgmtIP, "客户", t.Customer)
 	res, err := m.o.Collect(ctx, drivers.Request{
 		Address:    a.Device.MgmtIP,
@@ -390,16 +399,32 @@ func (m *Manager) collect(ctx context.Context, t *task, settings appdata.Setting
 		AcceptEULA: settings.AcceptEULA,
 		HTTPClient: hc,
 		UserAgent:  buildinfo.UserAgent(),
-		Store: &collect.Store{
-			Dir:      settings.OutputDir,
-			Customer: a.Device.Customer,
-			BatchID:  t.BatchID,
-			Tool:     collect.Tool{Name: info.Product, Version: info.Version},
-		},
-		Progress: func(e collect.Event) { m.progress(t, e) },
-		Sleep:    m.o.Sleep,
+		Store:      newStore(a, t, settings),
+		Progress:   func(e collect.Event) { m.progress(t, e) },
+		Sleep:      m.o.Sleep,
 	})
-	return res, rec, err
+	if rec == nil {
+		return res, nil, err
+	}
+	return res, func() any {
+		c := rec.Cassette()
+		c.Note, c.Tool, c.RecordedAt = recordNote, buildinfo.Get().String(), time.Now().Format(time.RFC3339)
+		return c
+	}, err
+}
+
+// recordNote 是界面收集时诊断记录的来源说明。
+const recordNote = "真机录制：LogDiag Collector 界面收集"
+
+// newStore 返回任务的保存位置：设置里的输出目录，同一批次共用批次号。
+func newStore(a inventory.Access, t *task, settings appdata.Settings) *collect.Store {
+	info := buildinfo.Get()
+	return &collect.Store{
+		Dir:      settings.OutputDir,
+		Customer: a.Device.Customer,
+		BatchID:  t.BatchID,
+		Tool:     collect.Tool{Name: info.Product, Version: info.Version},
+	}
 }
 
 func (m *Manager) progress(t *task, e collect.Event) {
@@ -451,7 +476,10 @@ func (m *Manager) afterCollect(t Task, res *collect.Result, err error) {
 	switch {
 	case err == nil:
 		md := res.Manifest.Device
-		m.o.Devices.SetIdentity(id, inventory.Identity{Vendor: md.Vendor, Model: md.Model, Serial: md.Serial, Hostname: md.Hostname, Firmware: md.Controller.Firmware})
+		m.o.Devices.SetIdentity(id, inventory.Identity{Vendor: md.Vendor, Model: md.Model, Serial: md.Serial, Hostname: md.Hostname, Firmware: firmwareOf(md)})
+		if res.SSHHostKey != "" {
+			m.o.Devices.SetSSHHostKey(id, res.SSHHostKey)
+		}
 		m.o.Devices.SetStatus(id, func(s *inventory.Status) {
 			s.Reach, s.ReachMessage, s.CheckedAt = inventory.ReachService, "", now
 			s.Login, s.LoginMessage, s.LoginAt = inventory.LoginOK, "", now
