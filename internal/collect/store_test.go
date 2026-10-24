@@ -174,12 +174,57 @@ func TestVerifyArchive(t *testing.T) {
 		{"a.tar", []byte("not a tar file at all"), false},
 		{"a.tar.gz", []byte("plain text"), false},
 		{"a.tzz", []byte("unknown format is accepted"), true},
+		// 扩展名认不出时按文件开头判断：联想的 .tzz 是 gzip，截断了要能发现。
+		{"b.tzz", tarGz(t), true},
+		{"c.tzz", tarGz(t)[:len(tarGz(t))-10], false},
+		{"d.bin", zbuf.Bytes()[:zbuf.Len()-5], false},
 	}
 	for _, tc := range cases {
 		p := write(tc.name, tc.data)
 		if err := verifyArchive(p, int64(len(tc.data))); (err == nil) != tc.ok {
 			t.Errorf("%s（%d 字节）：err = %v", tc.name, len(tc.data), err)
 		}
+	}
+}
+
+func TestSaveExtras(t *testing.T) {
+	j := newJob(t)
+	log := Log{Type: "hpe.ilo.ahs", Method: "redfish-oem", Range: Range{From: "2026-12-14T00:00:00+08:00", To: "2026-12-20T23:59:59+08:00"}}
+	iml := []byte(`{"Members":[]}`)
+	res, err := j.Save(log, "HPE_SN1_20261220.ahs", func(w io.Writer) error {
+		_, err := w.Write([]byte("AHS"))
+		return err
+	},
+		Attachment{Name: "IML.json", Data: iml},
+		Attachment{Name: "HPE_SN1_20261220.ahs", Data: []byte("重名的跳过")},
+		Attachment{Name: "empty.json"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var roles []string
+	for _, f := range res.Manifest.Files {
+		roles = append(roles, f.Name+":"+f.Role)
+	}
+	if strings.Join(roles, " ") != "HPE_SN1_20261220.ahs:main IML.json:extra" {
+		t.Errorf("Files = %v", roles)
+	}
+	if f := res.Manifest.Files[1]; f.Size != int64(len(iml)) || f.SHA256 != "2f6165cb3238c482e1dfba86a73d7eabf4bf0f77a50a6621fe7870409bbf2f3f" {
+		t.Errorf("IML.json = %+v", f)
+	}
+	if got, _ := os.ReadFile(filepath.Join(res.Dir, "IML.json")); !bytes.Equal(got, iml) {
+		t.Errorf("IML.json 内容 = %q", got)
+	}
+	raw, _ := os.ReadFile(filepath.Join(res.Dir, "manifest.json"))
+	if !strings.Contains(string(raw), `"range": {
+      "from": "2026-12-14T00:00:00+08:00",
+      "to": "2026-12-20T23:59:59+08:00"
+    }`) {
+		t.Errorf("manifest.json 应带 log.range：%s", raw)
+	}
+	// 没有时间段时不写 range。
+	if data, _ := json.Marshal(dumpLog); strings.Contains(string(data), "range") {
+		t.Errorf("Log = %s", data)
 	}
 }
 

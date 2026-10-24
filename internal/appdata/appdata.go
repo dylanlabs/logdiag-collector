@@ -50,6 +50,9 @@ type Settings struct {
 	TimeoutMinutes int `json:"timeout_minutes"`
 	// Record 为 true 时收集过程保留诊断记录（已去掉密码和令牌），失败后可以导出发给开发者。
 	Record bool `json:"record"`
+	// AcceptEULA 为 true 时，Dell iDRAC 没接受 SupportAssist 许可协议的由工具代为接受。
+	// 这会改动设备设置，默认关闭，由用户自己决定。
+	AcceptEULA bool `json:"accept_eula"`
 	// OSModule 为 false 时隐藏 OS 巡检模块。
 	OSModule bool `json:"os_module"`
 }

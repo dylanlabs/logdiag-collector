@@ -16,7 +16,7 @@ import (
 	"github.com/dylanlabs/logdiag-collector/internal/redfish"
 )
 
-// runProbe 只读探测一台设备：服务根、系统和管理器的型号与固件、可用的动作和日志服务。
+// runProbe 只读探测一台设备：服务根、系统和管理器的型号与固件、可用的动作、日志服务和各厂商的收集入口。
 // 用于阶段 0 真机验证：把 --record 保存的诊断记录发回，就能据此编写驱动和回放测试。
 func runProbe(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("probe", flag.ContinueOnError)
@@ -62,8 +62,7 @@ func runProbe(ctx context.Context, args []string, stdin io.Reader, stdout, stder
 	conn.finish(*record, "真机录制：logdiag-collector probe", stdout, stderr)
 
 	if err != nil {
-		kind := redfish.KindOf(err)
-		fmt.Fprintf(stderr, "\n失败（%s）：%v\n%s\n", kind, err, kind.Hint())
+		fmt.Fprintf(stderr, "\n失败（%s）：%v\n%s\n", redfish.KindOf(err), err, redfish.Advice(err))
 		return 1
 	}
 	return 0
@@ -131,6 +130,9 @@ func describe(ctx context.Context, c *redfish.Client, kind, uri string, w io.Wri
 	kv(w, "电源状态", r.PowerState)
 	kv(w, "OEM 扩展", strings.Join(sortedKeys(r.Oem), "、"))
 	printActions(w, "  ", redfish.ParseActions(r.Actions))
+	if kind == "管理器" {
+		describeCollection(ctx, c, &r, w)
+	}
 
 	if r.LogServices.ID == "" {
 		return
@@ -149,6 +151,38 @@ func describe(ctx context.Context, c *redfish.Client, kind, uri string, w io.Wri
 		}
 		fmt.Fprintf(w, "    %s\n", s)
 		printActions(w, "      ", redfish.ParseActions(ls.Actions))
+	}
+}
+
+// describeCollection 列出管理器上各厂商收集日志包的入口和动作：Dell 的 DellLCService、
+// HPE 的 ActiveHealthSystem、联想的 ServiceData。只读，真机核对驱动时看这里。
+func describeCollection(ctx context.Context, c *redfish.Client, m *redfish.Resource, w io.Writer) {
+	type entry struct{ name, uri string }
+	var entries []entry
+	if uri := redfish.Link(m.Links, "Oem", "Dell", "DellLCService"); uri != "" {
+		entries = append(entries, entry{"Dell DellLCService", uri})
+	} else if _, ok := m.Oem["Dell"]; ok {
+		entries = append(entries, entry{"Dell DellLCService", strings.TrimSuffix(m.ODataID, "/") + "/Oem/Dell/DellLCService"})
+	}
+	if uri := m.OemLink("Links", "ActiveHealthSystem"); uri != "" {
+		entries = append(entries, entry{"HPE ActiveHealthSystem", uri})
+	}
+	if uri := m.OemLink("ServiceData"); uri != "" {
+		entries = append(entries, entry{"联想 ServiceData", uri})
+	}
+	for _, e := range entries {
+		fmt.Fprintf(w, "  %s：%s\n", e.name, e.uri)
+		var r redfish.Resource
+		if _, err := c.Get(ctx, e.uri, &r); err != nil {
+			fmt.Fprintf(w, "    读取失败：%v\n", err)
+			continue
+		}
+		printActions(w, "    ", redfish.ParseActions(r.Actions))
+		for _, k := range []string{"AHSLocation", "RecentWeek"} {
+			if link := redfish.Link(r.Links, k); link != "" {
+				fmt.Fprintf(w, "    %s：%s\n", k, link)
+			}
+		}
 	}
 }
 

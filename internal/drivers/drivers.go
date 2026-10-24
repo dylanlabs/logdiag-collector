@@ -4,6 +4,7 @@
 //
 // 识别流程：匿名读 Redfish 服务根 → 登录 → 读第一个系统和管理器，
 // 得到厂商、型号、序列号、BMC 固件 → 按厂商选驱动。v0.1 的服务器品牌都支持 Redfish。
+// Dell 的序列号用服务标签（系统的 SKU），和机箱标签、Dell 支持网站一致。
 package drivers
 
 import (
@@ -15,16 +16,20 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/dylanlabs/logdiag-collector/internal/collect"
+	"github.com/dylanlabs/logdiag-collector/internal/collect/dell"
+	"github.com/dylanlabs/logdiag-collector/internal/collect/hpe"
 	"github.com/dylanlabs/logdiag-collector/internal/collect/huawei"
 	"github.com/dylanlabs/logdiag-collector/internal/collect/inspur"
+	"github.com/dylanlabs/logdiag-collector/internal/collect/lenovo"
 	"github.com/dylanlabs/logdiag-collector/internal/redfish"
 )
 
 // Brand 是命令行 --brand 可选的品牌。
 type Brand struct {
-	Key    string // huawei、xfusion、inspur
+	Key    string // huawei、xfusion、inspur、lenovo、dell、hpe
 	Vendor string // 写进 manifest 的厂商名
 	Driver collect.Driver
 }
@@ -34,6 +39,9 @@ var Brands = []Brand{
 	{"xfusion", "xFusion", huawei.Driver{}},
 	{"huawei", "Huawei", huawei.Driver{}},
 	{"inspur", "Inspur", inspur.Driver{}},
+	{"lenovo", "Lenovo", lenovo.Driver{}},
+	{"dell", "Dell", dell.Driver{}},
+	{"hpe", "HPE", hpe.Driver{}},
 }
 
 // keywords 是识别品牌时在厂商名、OEM 键里查找的词（小写）。
@@ -41,6 +49,14 @@ var keywords = map[string][]string{
 	"xfusion": {"xfusion"},
 	"huawei":  {"huawei"},
 	"inspur":  {"inspur", "ieit"}, // 浪潮信息新固件可能用 IEIT
+	"lenovo":  {"lenovo"},
+	"dell":    {"dell"},
+	"hpe":     {"hpe", "hewlett"},
+}
+
+// words 是必须作为完整单词出现的词：Gen9 的制造商和 OEM 键是 HP，按子串找会误认别的名字。
+var words = map[string][]string{
+	"hpe": {"hp"},
 }
 
 // BrandByKey 按命令行写法查找品牌。
@@ -72,15 +88,31 @@ func Detect(root *redfish.ServiceRoot, system, manager *redfish.Resource) (Brand
 		if strings.TrimSpace(text) == "" {
 			continue
 		}
+		tokens := strings.FieldsFunc(text, func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) })
 		for _, b := range Brands {
 			for _, kw := range keywords[b.Key] {
 				if strings.Contains(text, kw) {
 					return b, true
 				}
 			}
+			for _, w := range words[b.Key] {
+				if slices.Contains(tokens, w) {
+					return b, true
+				}
+			}
 		}
 	}
 	return Brand{}, false
+}
+
+// serialOf 返回写进 manifest 的序列号。Dell 用服务标签（SKU），SerialNumber 是主板序列号。
+func serialOf(b Brand, system *redfish.Resource) string {
+	if b.Key == "dell" {
+		if tag := strings.TrimSpace(system.SKU); tag != "" {
+			return tag
+		}
+	}
+	return strings.TrimSpace(system.SerialNumber)
 }
 
 func keysOf[V any](m map[string]V) []string {
@@ -98,6 +130,8 @@ type Request struct {
 	User     string
 	Password string
 	Brand    string // 为空时自动识别
+	// AcceptEULA 允许代为接受 Dell SupportAssist 许可协议，见 collect.Job.AcceptEULA。
+	AcceptEULA bool
 
 	HTTPClient *http.Client // 由调用方配置证书锁定、老设备 TLS 和录制
 	UserAgent  string
@@ -131,6 +165,7 @@ func Collect(ctx context.Context, req Request) (*collect.Result, error) {
 		UserAgent:  req.UserAgent,
 		User:       req.User,
 		Password:   req.Password,
+		AcceptEULA: req.AcceptEULA,
 		Store:      req.Store,
 		Progress:   req.Progress,
 		Sleep:      req.Sleep,
@@ -164,7 +199,7 @@ func Collect(ctx context.Context, req Request) (*collect.Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	job.Manager = manager
+	job.Manager, job.System = manager, system
 	if brand.Key == "" {
 		var ok bool
 		if brand, ok = Detect(root, system, manager); !ok {
@@ -175,7 +210,7 @@ func Collect(ctx context.Context, req Request) (*collect.Result, error) {
 	job.Device.Type = "server"
 	job.Device.Vendor = brand.Vendor
 	job.Device.Model = strings.TrimSpace(system.Model)
-	job.Device.Serial = strings.TrimSpace(system.SerialNumber)
+	job.Device.Serial = serialOf(brand, system)
 	job.Device.Hostname = strings.TrimSpace(system.HostName)
 	job.Device.Controller.Firmware = strings.TrimSpace(manager.FirmwareVersion)
 
@@ -236,6 +271,7 @@ func Identify(ctx context.Context, req Request) (*Identity, error) {
 	}
 	if b, ok := Detect(root, system, manager); ok {
 		id.Brand = b
+		id.Serial = serialOf(b, system)
 	}
 	return id, nil
 }
