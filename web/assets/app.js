@@ -5,7 +5,7 @@
 
 import { h, $, icon, bus, dialog, notice, button, openMenu, soon, frame } from './lib.js';
 import { store, loadState, loadDevices, loadTasks } from './store.js';
-import { links, openLink } from './actions.js';
+import { links, openLink, checkUpdate } from './actions.js';
 import * as devicesPage from './pages/devices.js';
 import * as collectPage from './pages/collect.js';
 import * as healthPage from './pages/health.js';
@@ -138,25 +138,6 @@ function connect() {
 
 // ---------- 左下角：检查更新、语言、反馈 ----------
 
-function showUpdate() {
-  const info = store.state?.info || {};
-  dialog({
-    title: '检查更新',
-    body: [
-      h('dl', { class: 'kv' },
-        h('dt', { text: '当前版本' }), h('dd', { text: `v${info.version || ''}` }),
-        info.commit ? [h('dt', { text: '提交' }), h('dd', { class: 'mono', text: info.commit.slice(0, 12) })] : null),
-      notice('soon',
-        h('p', {}, h('strong', { text: '一键检查更新即将支持' }), '，正式版 v0.1 提供，只在你点击时联网。'),
-        h('p', { text: '现在可以打开发布页，对照上面的版本号下载新版本。' })),
-    ],
-    actions: [
-      { text: '关闭' },
-      { text: '打开发布页', kind: 'primary', icon: 'open', onclick: () => openLink(links.releases) },
-    ],
-  });
-}
-
 function showLanguage(e) {
   openMenu(e.currentTarget, [
     { text: '简体中文', checked: true },
@@ -182,7 +163,7 @@ function showFeedback() {
 
 function buildSideIcons() {
   const items = [
-    ['update', '检查更新', showUpdate],
+    ['update', '检查更新', checkUpdate],
     ['language', '语言', showLanguage],
     ['feedback', '问题反馈', showFeedback],
   ];

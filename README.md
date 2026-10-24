@@ -58,8 +58,8 @@ gh attestation verify LogDiagCollector.exe --repo dylanlabs/logdiag-collector
 | --- | --- |
 | 设备列表 | 添加、批量添加（支持地址范围和网段）、编辑、删除设备；从 Excel/CSV 设备表或 BMCKit 导出的发现结果导入，导出为 Excel/CSV（不含密码）；凭据模板；检查连通（不登录）；识别型号（登录读取品牌、型号、序列号并回填） |
 | 日志收集 | 勾选设备批量收集，显示每台设备的阶段、进度、失败原因和处理办法；可以取消、重试、导出诊断记录 |
-| 收集结果 | 列出保存位置里的日志包，按客户打成离线上传包（zip，包里的 `package.json` 格式见 [docs/schema/package-1.schema.json](docs/schema/package-1.schema.json)，网站侧尚未接入） |
-| 设置 | 保存位置、同时收集的台数、单台超时、诊断记录、是否代为接受 Dell SupportAssist 许可协议、OS 巡检模块开关 |
+| 收集结果 | 列出保存位置里的日志包，按客户打成离线上传包（zip），拷到能上网的电脑再上传到 LogDiag。包的格式和网站的检查步骤见 [docs/schema](docs/schema/README.md)，网站侧正在接入 |
+| 设置 | 保存位置、同时收集的台数、单台超时、诊断记录、是否代为接受 Dell SupportAssist 许可协议、OS 巡检模块开关、检查更新 |
 | 健康与告警 | 计划 1.1 提供，目前只有页面布局 |
 | OS 巡检 | 计划 1.0 提供（Windows 巡检 1.1），目前只有页面布局，可在设置里隐藏 |
 
@@ -73,8 +73,7 @@ gh attestation verify LogDiagCollector.exe --repo dylanlabs/logdiag-collector
 LogDiagCollector.exe                       启动界面
 LogDiagCollector.exe probe --host 10.0.0.10 --user admin --record probe.json
 LogDiagCollector.exe collect --host 10.0.0.10 --user admin --record collect.json
-LogDiagCollector.exe collect --type network --host 10.0.0.20 --user admin --enable --record net.netrec.json
-LogDiagCollector.exe inspect --host 10.0.0.10 --user root  --record inspect.json
+LogDiagCollector.exe verify LogDiag-示例客户-20261120-1430-5d0c8e1a.zip
 LogDiagCollector.exe version               显示版本
 LogDiagCollector.exe help                  查看全部命令
 ```
@@ -97,7 +96,7 @@ LogDiagCollector.exe help                  查看全部命令
 
 Dell iDRAC 第一次导出 SupportAssist 收集包之前，要先接受 Dell 的 SupportAssist 许可协议（EULA）。工具默认不代为接受：遇到还没接受的 iDRAC 会停下来提示。在设置里勾选“代为接受 Dell SupportAssist 许可协议”，或者命令行加 `--accept-eula`，工具会先接受再收集，等同于在 iDRAC 网页上点“接受”。
 
-文件保存在 `--out` 指定的位置（默认当前文件夹），一台设备一个文件夹，旁边的 `manifest.json` 写明设备、日志类型和 SHA-256，LogDiag 据此自动识别（格式见 [docs/schema/manifest-1.schema.json](docs/schema/manifest-1.schema.json)）：
+文件保存在 `--out` 指定的位置（默认当前文件夹），一台设备一个文件夹，旁边的 `manifest.json` 写明设备、日志类型和 SHA-256，LogDiag 用它核对文件、显示设备信息（格式见 [docs/schema/manifest-1.schema.json](docs/schema/manifest-1.schema.json)）：
 
 ```
 [客户]\20261026\Huawei_2288HV5_2102311XXXXX_dump_20261026-1403\
@@ -114,45 +113,20 @@ HPE 的文件夹里除了 `.ahs` 还有 `IML.json`、`IEL.json`（manifest 里�
 - HPE iLO 4（Gen9）会按同样的接口尝试，没有专门适配。
 - 联想 AMD 平台的 SR635/SR655 用的不是 XCC，暂不支持；IBM/联想 System x 的 IMM2 计划在 v0.2 支持。
 
-`inspect` 对一台服务器的操作系统做巡检：通过 SSH 上传 LogDiag 的巡检脚本（和网站「OS 巡检」页提供下载的是同一份，内置进 exe，`--show-script` 可查看并核对 SHA-256），以 root 或 `sudo` 运行，取回结果压缩包，旁边同样写 `manifest.json`（`device.type` 为 `os`，`log.type` 为 `logdiag.linux.pm`）。脚本只做读取类收集，不改系统配置、不清日志、不重启。结束、失败或取消时都会删掉上传的脚本和设备上的临时文件。
-
-| 系统 | 结果 | 方式 |
-| --- | --- | --- |
-| Linux（RHEL/CentOS/Rocky/Alma/Ubuntu/Debian/SLES/openEuler/麒麟/统信等） | `<主机名>.<序列号>.pm-<时间>.tar.gz` | SSH，root 或 sudo 运行脚本 |
-
-用 `--user root` 直接以 root 登录；非 root 账号加 `--sudo`（默认开），需要该账号有 sudo 权限（如果 sudo 配了 `requiretty` 则暂不支持）。可以用 `--key` 指定私钥登录（不能带口令），或用密码。首次连接会显示并记录 SSH 主机密钥指纹，下次用 `--host-key SHA256:…` 传入即可核对设备是否被冒充；指纹不符会停下并提示。认证失败立即停止、不重试，避免账号被锁。VMware ESXi、AIX、Solaris、HP-UX、Windows 的脚本等有对应测试环境后再支持。
-
-`collect --type network` 通过 SSH 登录交换机、路由器、防火墙，收集诊断信息和日志缓冲区（界面上把设备类型设为“网络”即可）：
-
-| 厂商 | 系统 | 收集的内容 | 日志类型 |
-| --- | --- | --- | --- |
-| 思科 | IOS、IOS XE（Catalyst 等） | `show tech-support`，另附 `show logging` | `cisco.ios.showtech` |
-| 思科 | NX-OS（Nexus） | `show tech-support`，另附 `show logging logfile` | `cisco.nxos.showtech` |
-| 思科 | MDS 9000 | `show tech-support details`，另附 `show logging logfile` | `cisco.mds.showtech` |
-| 思科 | ASA | `show tech-support`，另附 `show logging` | `cisco.asa.showtech` |
-| 华为 | VRP（S、CE 系列交换机等） | `display diagnostic-information`，另附 `display logbuffer`、`display trapbuffer` | `huawei.vrp.diag` |
-| 新华三 | Comware（含 HPE 的 Comware 交换机） | `display diagnostic-information`，另附 `display logbuffer` | `h3c.comware.diag` |
-
-- 登录后按提示符和 `show version` / `display version` 自动识别系统、型号、版本，再用 `show inventory`、`display esn`、`display device manuinfo` 读序列号，不用选品牌。
-- 只执行查看类命令：关闭分页只对本次登录有效，不改配置、不保存、不在设备上生成文件，结束时退出登录。登录后设备问是否修改密码时回答“否”；账号被要求必须先改密码时会停下来提示，不替你改。
-- 思科账号登录后在普通模式（提示符是 `>`）时，要填 enable 密码（命令行加 `--enable`，界面在设备里填）。密码和 enable 密码都只发送一次，错了立即停止。
-- 输出原样保存成文本（每个命令一个 `.txt`），保存前遮盖口令、密钥、SNMP 团体名和设备加密后的密文，`manifest.json` 的 `redaction` 写明用了哪些规则。设备里配置的其他信息（主机名、地址、序列号）保留。
-- 首次连接记下 SSH 主机密钥指纹（界面自动保存在设备里，命令行会显示，下次用 `--host-key` 传入），之后指纹不符会在发送密码前停下。设备确实换过密钥时，在设备编辑框里清除记录的指纹。
-- `show tech-support` / `display diagnostic-information` 会让设备 CPU 短时升高，大型设备要几分钟到几十分钟，业务高峰期慎用。SSH 端口不是 22 时，地址写成 `10.0.0.20:2222`。
-- 加 `--record` 保存的诊断记录是命令行会话（`.netrec.json`），里面没有密码和设备地址，输出按同样的规则遮盖。
+`verify` 检查离线上传包是否完整：每个文件的大小和 SHA-256、`manifest.json` 和 `package.json` 是否一致，拷到 U 盘或别的电脑后可以再查一次；加 `--json` 输出机器可读的结果。网站收包时按同样的步骤检查。
 
 `probe` 和 `collect` 加 `--record` 会把这次的接口往返保存成诊断记录（日志包本身只留开头一小段和 SHA-256）。记录里已自动去掉密码、会话令牌、Cookie 和设备 IP，但仍保留型号、序列号、主机名和其他地址等设备信息，发给别人前请先看一遍。
 
 ## 隐私说明
 
 - **不收集遥测**，不上报任何使用数据。
-- **默认不联网。** 只有你点击“检查更新”“上传到 LogDiag”“问题反馈”“开始分析日志”时才会访问 logdiag.com。和设备之间的通信直连管理网，不经过系统代理。
+- **默认不联网。** 只有你点击“检查更新”“上传到 LogDiag”“问题反馈”“开始分析日志”时才会访问 logdiag.com。检查更新先读 logdiag.com 上的最新版本信息，连不上时改读 GitHub 上的最新 Release，请求里只有程序名和版本号；有新版本时由你决定是否打开下载页，程序不会自己下载或安装。访问外网时按 Windows 的代理设置走代理；和设备之间的通信直连管理网，不经过代理。
 - **凭据只留在本机。** 设备和凭据模板的密码用 Windows DPAPI 加密保存（绑定当前 Windows 用户，换电脑或换账号都解不开），界面上不回显，导出的表格不含密码，永远不会上传。
 - **日志由你决定是否上传。** 收集到的日志可能含设备配置、序列号、主机名、IP 等信息；上传前会列出文件清单由你确认。
 - **诊断记录自动脱敏**，去掉的内容和保留的内容见上面的 `probe` 说明。界面导出的诊断记录文件名也不带设备 IP。
 - **本机界面只有你能访问**：只监听 127.0.0.1，并用一次性令牌打开，局域网里的其他电脑访问不到。
 
-当前开发版自身不联网，“开始分析日志”“打开发布页”等按钮只是在浏览器里打开网页。以上承诺适用于以后的所有版本。
+目前程序自己只在检查更新时联网，“开始分析日志”“打开发布页”等按钮只是在浏览器里打开网页。以上承诺适用于以后的所有版本。
 
 ## 代码签名政策（Code signing policy）
 
@@ -178,6 +152,12 @@ scripts/build.sh v0.1.0            # 编译带版本资源的 Windows exe 到 di
 
 同一提交在任何机器上编出的 exe 完全相同，可以自己编译后与 Release 里的 SHA-256 比对。界面在 `web/` 目录，是原生 HTML、CSS 和 JavaScript，不需要 npm。
 
+### 发布新版本
+
+1. 在 `CHANGELOG.md` 里把“未发布”改成版本号，写清楚给用户的变化，合入 main。
+2. `git tag v0.1.0 && git push origin v0.1.0`。流水线测试、编译，生成 `SHA256SUMS`、`latest.json` 和构建证明，创建 Release。
+3. 把 Release 里的 exe 放到 logdiag.com 的下载地址，**再**把 `latest.json` 放到 `https://logdiag.com/collector/latest.json`。顺序反过来，用户点“检查更新”会拿到还没上传的下载地址。
+
 ## 测试与真机验证
 
 各品牌接口靠两层测试保证：
@@ -191,8 +171,7 @@ scripts/build.sh v0.1.0            # 编译带版本资源的 Windows exe 到 di
 ## 目录结构
 
 ```
-cmd/logdiag-collector/   程序入口和子命令（ui、probe、collect、inspect、version）
-cmd/netsim/              开发用：在本机启动模拟的网络设备（不随 exe 发布）
+cmd/logdiag-collector/   程序入口和子命令（ui、probe、collect、verify、version）
 internal/drivers/        识别设备、选择驱动、执行一次收集
 internal/collect/        驱动公共部分：阶段进度、文件落盘与校验、manifest
 internal/collect/huawei/ 华为、超聚变 iBMC 驱动
@@ -215,8 +194,10 @@ internal/secret/         密码加密（Windows DPAPI）
 internal/xlsx/           读写 Excel .xlsx（只用标准库）
 internal/buildinfo/      版本信息
 web/                     界面静态文件（原生 ES Module + CSS），编译时嵌入 exe
-docs/schema/             manifest 和离线上传包的 JSON Schema（与 LogDiag 网站共用）
+internal/update/         检查更新（读 latest.json，GitHub 兜底，走系统代理）
+docs/schema/             manifest、离线上传包、latest.json 的格式和契约样例（与 LogDiag 网站共用）
 scripts/build.sh         编译 Windows exe
+scripts/latestjson/      发布时生成 latest.json
 ```
 
 ## 许可证

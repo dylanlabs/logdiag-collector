@@ -27,9 +27,11 @@ func startServer(t *testing.T, opts Options) (*Server, chan error) {
 	go func() { done <- s.Run(ctx) }()
 	t.Cleanup(func() {
 		cancel()
+		// Run 最多等 shutdownTimeout：连上了但还没发请求的连接（http.Client 拨号竞争、浏览器预连接留下的）
+		// 要满 5 秒才会被 Shutdown 关掉。这里要比它多留余量，否则两个计时器赛跑，慢的机器上偶发失败。
 		select {
 		case <-done:
-		case <-time.After(5 * time.Second):
+		case <-time.After(shutdownTimeout + 5*time.Second):
 			t.Error("服务没有及时退出")
 		}
 	})

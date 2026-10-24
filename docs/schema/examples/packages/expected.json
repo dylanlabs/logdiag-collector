@@ -1,0 +1,213 @@
+{
+  "_说明": "每个样例包应得到的检查结果，检查步骤见 docs/schema/README.md。problems 按顺序比较 code 和 path，message 只给人看、不比较。浏览器端不计算大文件的 SHA-256，比较时跳过 path 不是 manifest.json 的 checksum_mismatch。样例里的日志文件是合成的小文件，只能测拆包和校验，不能测解析器。",
+  "packages": [
+    {
+      "file": "ok.zip",
+      "description": "Collector 打的离线上传包：华为、浪潮各一台，HPE 一台另带 IML.json、IEL.json 两个附带文件",
+      "result": "ok",
+      "package": {
+        "package_id": "5d0c8e1a-3b7f-4e2a-9c61-8f4b2a7d9e03",
+        "customer": "示例客户",
+        "devices": [
+          {
+            "dir": "Huawei_2288HV5_2102311TYBN0K8000123_dump_20261120-1403",
+            "log_type": "huawei.ibmc.dump",
+            "main": [
+              "dump_info.tar.gz"
+            ],
+            "extra": []
+          },
+          {
+            "dir": "Inspur_NF5280M6_220123456_onekeylog_20261120-1404",
+            "log_type": "inspur.bmc.onekeylog",
+            "main": [
+              "onekeylog.tar.gz"
+            ],
+            "extra": []
+          },
+          {
+            "dir": "HPE_ProLiantDL380Gen10_CZJ00000A1_ahs_20261120-1405",
+            "log_type": "hpe.ilo.ahs",
+            "main": [
+              "HPE_CZJ00000A1_20261120.ahs"
+            ],
+            "extra": [
+              "IEL.json",
+              "IML.json"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "file": "ok-rezipped.zip",
+      "description": "ok.zip 解压后连文件夹一起重新压缩：多一层顶层文件夹（GBK 编码、无 UTF-8 标志），全部用 Deflate 压缩，带文件夹条目",
+      "result": "ok",
+      "nested": true,
+      "package": {
+        "package_id": "5d0c8e1a-3b7f-4e2a-9c61-8f4b2a7d9e03",
+        "customer": "示例客户",
+        "devices": [
+          {
+            "dir": "Huawei_2288HV5_2102311TYBN0K8000123_dump_20261120-1403",
+            "log_type": "huawei.ibmc.dump",
+            "main": [
+              "dump_info.tar.gz"
+            ],
+            "extra": []
+          },
+          {
+            "dir": "Inspur_NF5280M6_220123456_onekeylog_20261120-1404",
+            "log_type": "inspur.bmc.onekeylog",
+            "main": [
+              "onekeylog.tar.gz"
+            ],
+            "extra": []
+          },
+          {
+            "dir": "HPE_ProLiantDL380Gen10_CZJ00000A1_ahs_20261120-1405",
+            "log_type": "hpe.ilo.ahs",
+            "main": [
+              "HPE_CZJ00000A1_20261120.ahs"
+            ],
+            "extra": [
+              "IEL.json",
+              "IML.json"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "file": "ok-zip64.zip",
+      "description": "ok.zip 的内容，所有条目都用 zip64 扩展字段和 zip64 目录结尾记录（大于 4 GB 的包就是这样）",
+      "result": "ok",
+      "package": {
+        "package_id": "5d0c8e1a-3b7f-4e2a-9c61-8f4b2a7d9e03",
+        "customer": "示例客户",
+        "devices": [
+          {
+            "dir": "Huawei_2288HV5_2102311TYBN0K8000123_dump_20261120-1403",
+            "log_type": "huawei.ibmc.dump",
+            "main": [
+              "dump_info.tar.gz"
+            ],
+            "extra": []
+          },
+          {
+            "dir": "Inspur_NF5280M6_220123456_onekeylog_20261120-1404",
+            "log_type": "inspur.bmc.onekeylog",
+            "main": [
+              "onekeylog.tar.gz"
+            ],
+            "extra": []
+          },
+          {
+            "dir": "HPE_ProLiantDL380Gen10_CZJ00000A1_ahs_20261120-1405",
+            "log_type": "hpe.ilo.ahs",
+            "main": [
+              "HPE_CZJ00000A1_20261120.ahs"
+            ],
+            "extra": [
+              "IEL.json",
+              "IML.json"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "file": "bad-files.zip",
+      "description": "文件损坏：内容被改、文件丢失、文件被截短；问题一次列全",
+      "result": "problems",
+      "problems": [
+        {
+          "code": "checksum_mismatch",
+          "path": "Huawei_2288HV5_2102311TYBN0K8000123_dump_20261120-1403/dump_info.tar.gz"
+        },
+        {
+          "code": "file_missing",
+          "path": "Inspur_NF5280M6_220123456_onekeylog_20261120-1404/onekeylog.tar.gz"
+        },
+        {
+          "code": "size_mismatch",
+          "path": "HPE_ProLiantDL380Gen10_CZJ00000A1_ahs_20261120-1405/IEL.json"
+        }
+      ]
+    },
+    {
+      "file": "bad-manifest.zip",
+      "description": "manifest 不对：和 package.json 不一致、不是合法 JSON、package.json 没列出 manifest.json",
+      "result": "problems",
+      "problems": [
+        {
+          "code": "manifest_mismatch",
+          "path": "Huawei_2288HV5_2102311TYBN0K8000123_dump_20261120-1403/manifest.json"
+        },
+        {
+          "code": "manifest_invalid",
+          "path": "Inspur_NF5280M6_220123456_onekeylog_20261120-1404/manifest.json"
+        },
+        {
+          "code": "manifest_missing",
+          "path": "HPE_ProLiantDL380Gen10_CZJ00000A1_ahs_20261120-1405"
+        }
+      ]
+    },
+    {
+      "file": "bad-paths.zip",
+      "description": "路径不安全：设备文件夹名带 ../、设备文件夹重复、文件名带冒号（因此也和 manifest 对不上）；网站只按检查过的名字读文件，不能按 zip 里的条目名解压",
+      "result": "problems",
+      "problems": [
+        {
+          "code": "path_invalid",
+          "path": "../evil"
+        },
+        {
+          "code": "duplicate_path",
+          "path": "Huawei_2288HV5_2102311TYBN0K8000123_dump_20261120-1403"
+        },
+        {
+          "code": "path_invalid",
+          "path": "Inspur_NF5280M6_220123456_onekeylog_20261120-1404/C:onekeylog.tar.gz"
+        },
+        {
+          "code": "manifest_mismatch",
+          "path": "Inspur_NF5280M6_220123456_onekeylog_20261120-1404/manifest.json"
+        }
+      ]
+    },
+    {
+      "file": "bad-package.zip",
+      "description": "package.json 缺少 package_id：整个包不能用",
+      "result": "problems",
+      "problems": [
+        {
+          "code": "package_invalid",
+          "path": "package.json"
+        }
+      ]
+    },
+    {
+      "file": "newer-version.zip",
+      "description": "更新的大版本（logdiag.package/2）：提示升级，不按第 1 版硬读",
+      "result": "problems",
+      "problems": [
+        {
+          "code": "schema_unsupported",
+          "path": "package.json"
+        }
+      ]
+    },
+    {
+      "file": "not-a-package.zip",
+      "description": "普通的 zip（没有 package.json）：不是离线上传包，网站照旧按普通日志处理",
+      "result": "not_package"
+    },
+    {
+      "file": "not-a-zip.zip",
+      "description": "扩展名是 .zip 但不是 zip 文件",
+      "result": "not_zip"
+    }
+  ]
+}

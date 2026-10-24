@@ -394,6 +394,9 @@ table.grid { width: 100%; border-collapse: separate; border-spacing: 0; }
 .dialog-head h2 { margin: 0; font-size: 12pt; font-weight: 700; }
 .dialog-body { padding: 4px 22px 18px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
 .dialog-text { margin: 0; white-space: pre-line; }
+.update-progress { width: 100%; margin-top: 12px; }
+.update-notes { margin-top: 10px; padding: 10px 12px; max-height: 240px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); white-space: pre-line; }
+.update-via { margin: 8px 0 0; }
 .dialog-foot .push-left { margin-right: auto; }
 .dialog-error { padding: 0 22px 12px; }
 .dialog-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 22px 16px; border-top: 1px solid var(--divider); }

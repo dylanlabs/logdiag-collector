@@ -1,5 +1,5 @@
-# 推送 v* 标签时发布：测试 → 编译 → SHA256SUMS → 构建证明 → GitHub Release。
-# 发布方式：git tag v0.1.0 && git push origin v0.1.0
+# 推送 v* 标签时发布：测试 → 编译 → SHA256SUMS → latest.json → 构建证明 → GitHub Release。
+# 发布方式：先把 CHANGELOG.md 里的“未发布”改成版本号并合入 main，再 git tag v0.1.0 && git push origin v0.1.0
 name: Release
 
 on:
@@ -36,6 +36,16 @@ jobs:
         working-directory: dist
         run: sha256sum -- *.exe | tee SHA256SUMS
 
+      # latest.json 供检查更新和网站下载页读取（格式见 docs/schema/latest-1.schema.json）。
+      # 更新说明取自 CHANGELOG.md 里这个版本的一节，正式版没有这一节时发布失败。
+      # 旧版本有必须升级的问题（例如安全问题）时，把 MIN_SUPPORTED 改成修复它的版本。
+      - name: 生成 latest.json
+        env:
+          MIN_SUPPORTED: 0.1.0
+        run: |
+          go run ./scripts/latestjson -version "$GITHUB_REF_NAME" -min-supported "$MIN_SUPPORTED" dist/*.exe > dist/latest.json
+          cat dist/latest.json
+
       # 构建证明（SLSA provenance）让任何人都能核对 exe 是由本仓库这次提交在 GitHub Actions 上编出来的。
       # README 承诺每个 Release 都有，所以生成失败（例如仓库又改回私有）时整个发布失败，不发没有证明的版本。
       - name: 构建证明
@@ -50,7 +60,7 @@ jobs:
         run: |
           flags=()
           if [[ "$TAG" == *-* ]]; then flags+=(--prerelease); fi
-          gh release create "$TAG" dist/*.exe dist/SHA256SUMS \
+          gh release create "$TAG" dist/*.exe dist/SHA256SUMS dist/latest.json \
             --verify-tag \
             --title "LogDiag Collector ${TAG#v}" \
             --notes-file .github/release-notes.md \

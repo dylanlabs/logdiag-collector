@@ -1,0 +1,20 @@
+{
+  "schema": "logdiag.latest/1",
+  "product": "LogDiag Collector",
+  "version": "0.1.0",
+  "released_at": "2026-11-27T02:00:00Z",
+  "url": "https://logdiag.com/collector/",
+  "notes": "首个版本：\n\n- 华为、超聚变、浪潮、联想、Dell、HPE 服务器一键收集日志包。\n- 收集结果按客户打成离线上传包，拷到能上网的电脑再传到 LogDiag。",
+  "min_supported": "0.1.0",
+  "downloads": [
+    {
+      "name": "LogDiagCollector-0.1.0-win-x64.exe",
+      "os": "windows",
+      "arch": "amd64",
+      "size": 51,
+      "sha256": "b848a39a8da05941618da85cd97241fd6a74c7f719ff98a66817fb17b09cb0e5",
+      "url": "https://logdiag.com/collector/download/LogDiagCollector-0.1.0-win-x64.exe",
+      "mirror": "https://github.com/dylanlabs/logdiag-collector/releases/download/v0.1.0/LogDiagCollector-0.1.0-win-x64.exe"
+    }
+  ]
+}

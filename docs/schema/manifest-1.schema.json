@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/dylanlabs/logdiag-collector/blob/main/docs/schema/manifest-1.schema.json",
   "title": "LogDiag manifest 第 1 版",
-  "description": "每个日志包旁边的 manifest.json。LogDiag 网站据此选择解析器、按客户和批次归档。小版本只加字段、不改含义。",
+  "description": "每个设备文件夹里的 manifest.json：日志文件来自哪台设备、怎么收集的、每个文件的大小和 SHA-256。网站仍按文件内容识别日志类型，manifest 用来核对文件、显示设备信息和归档。小版本只加字段、不改含义，读取方忽略不认识的字段。说明和样例见 README.md、examples/manifest.json。",
   "type": "object",
   "required": ["schema", "tool", "collected_at", "customer", "batch_id", "device", "log", "files", "redaction"],
   "properties": {
@@ -11,30 +11,41 @@
       "type": "object",
       "required": ["name", "version"],
       "properties": {
-        "name": { "type": "string" },
-        "version": { "type": "string" }
+        "name": { "type": "string", "examples": ["LogDiag Collector"] },
+        "version": { "type": "string", "examples": ["0.1.0"] }
       }
     },
-    "collected_at": { "type": "string", "format": "date-time", "description": "收集完成时间，带时区" },
+    "collected_at": { "type": "string", "format": "date-time", "description": "收集完成时间，RFC 3339，带时区" },
     "customer": { "type": "string", "description": "用户填写的客户名称，可以为空或只用代号" },
     "batch_id": { "type": "string", "format": "uuid", "description": "同一次批量收集共用" },
     "device": {
       "type": "object",
       "required": ["type", "vendor", "model", "serial", "controller"],
       "properties": {
-        "type": { "enum": ["server", "storage", "network", "os"] },
-        "vendor": { "type": "string", "examples": ["Huawei", "xFusion", "Inspur", "Cisco", "H3C"] },
-        "model": { "type": "string" },
-        "serial": { "type": "string" },
-        "hostname": { "type": "string" },
-        "mgmt_ip": { "type": "string", "description": "管理口地址，用户可设置不上传" },
+        "type": {
+          "enum": ["server", "storage", "network", "os"],
+          "description": "server 服务器（BMC 日志），storage 存储，network 网络设备，os 操作系统巡检"
+        },
+        "vendor": { "type": "string", "examples": ["Huawei", "xFusion", "Inspur", "Lenovo", "Dell", "HPE", "H3C", "IBM", "NetApp", "EMC", "Cisco"] },
+        "model": { "type": "string", "examples": ["2288H V5", "NF5280M6", "ThinkSystem SR650 V2", "PowerEdge R740", "ProLiant DL380 Gen10", "N9K-C93180YC-EX"] },
+        "serial": {
+          "type": "string",
+          "description": "整机序列号。Dell 填服务标签（Service Tag），网络设备填机框序列号，OS 巡检填所在服务器的序列号，便于和同一台机器的 BMC 日志对上。读不到时为空字符串"
+        },
+        "hostname": { "type": "string", "description": "可选。设备或系统的主机名" },
+        "mgmt_ip": {
+          "type": "string",
+          "description": "可选。收集时连接的管理地址（BMC、存储或网络设备）。日志文件里本来就有这个地址，所以不单独提供不写入的选项"
+        },
+        "host_ip": { "type": "string", "description": "可选。OS 巡检时连接的系统地址" },
+        "os": { "type": "string", "description": "可选。OS 巡检时读到的操作系统和版本", "examples": ["Rocky Linux 9.4", "VMware ESXi 8.0.2"] },
         "controller": {
           "type": "object",
           "required": ["type", "firmware"],
-          "description": "服务器是 BMC 和它的固件版本；网络设备是操作系统和版本，例如 NX-OS 9.3(8)",
+          "description": "服务器填 BMC，存储填控制器，网络设备填操作系统和版本；读不到时两项为空字符串",
           "properties": {
-            "type": { "type": "string", "examples": ["iBMC", "BMC", "iDRAC", "XCC", "iLO", "IOS", "IOS-XE", "NX-OS", "ASA", "VRP", "Comware"] },
-            "firmware": { "type": "string" }
+            "type": { "type": "string", "examples": ["iBMC", "BMC", "XCC", "iDRAC", "iLO", "HDM", "IMM2", "IOS-XE", "NX-OS", "ASA", "VRP", "Comware"] },
+            "firmware": { "type": "string", "examples": ["3.08.01.07", "7.10.30.00", "17.9.4a"] }
           }
         }
       }
@@ -46,39 +57,63 @@
         "type": {
           "type": "string",
           "pattern": "^[a-z0-9]+(\\.[a-z0-9]+)+$",
-          "description": "厂商.产品线.日志，全小写，网站按它选解析器",
-          "examples": ["huawei.ibmc.dump", "xfusion.ibmc.dump", "inspur.bmc.onekeylog", "lenovo.xcc.ffdc", "dell.idrac.tsr", "hpe.ilo.ahs",
-            "cisco.ios.showtech", "cisco.nxos.showtech", "cisco.mds.showtech", "cisco.asa.showtech", "huawei.vrp.diag", "h3c.comware.diag"]
+          "description": "日志类型编码，“厂商.产品线.日志”，全小写，和网站共用 README.md 里的清单。网站仍按文件内容识别日志类型，这个编码用于核对、统计和识别不了时的提示",
+          "examples": [
+            "huawei.ibmc.dump", "xfusion.ibmc.dump", "inspur.bmc.onekeylog", "lenovo.xcc.ffdc", "dell.idrac.tsr", "hpe.ilo.ahs",
+            "h3c.hdm.sds", "lenovo.imm2.ffdc",
+            "ibm.storwize.snap", "dell.powervault.logs", "hpe.msa.logs", "netapp.ontap.asup", "emc.unity.serviceinfo", "hpe.3par.cli",
+            "cisco.ios.showtech", "cisco.nxos.showtech", "cisco.asa.showtech", "cisco.mds.showtech", "huawei.vrp.diag", "h3c.comware.diag",
+            "logdiag.linux.pm", "logdiag.esxi.pm", "logdiag.aix.pm", "logdiag.solaris.pm", "logdiag.hpux.pm", "logdiag.windows.pm"
+          ]
         },
-        "method": { "type": "string", "examples": ["redfish-oem", "redfish-standard", "bmc-web-api", "ssh"] },
+        "method": { "type": "string", "description": "采集方式，排错用", "examples": ["redfish-oem", "redfish-standard", "bmc-web-api", "ssh"] },
         "range": {
           "type": "object",
-          "properties": { "from": { "type": "string" }, "to": { "type": "string" } }
+          "description": "可选。只收集了一段时间的日志时填写，例如 HPE AHS 只下载最近 7 天",
+          "properties": {
+            "from": { "type": "string", "format": "date-time" },
+            "to": { "type": "string", "format": "date-time" }
+          }
         }
       }
     },
     "files": {
       "type": "array",
       "minItems": 1,
+      "description": "设备文件夹里的日志文件（不含 manifest.json 本身）。至少一个 main",
+      "contains": { "properties": { "role": { "const": "main" } } },
       "items": {
         "type": "object",
         "required": ["name", "size", "sha256", "role"],
         "properties": {
-          "name": { "type": "string" },
+          "name": { "$ref": "#/$defs/name" },
           "size": { "type": "integer", "minimum": 1 },
           "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-          "role": { "enum": ["main", "extra"] }
+          "role": {
+            "enum": ["main", "extra"],
+            "description": "main 是设备生成的日志包或命令输出；extra 是附带文件，例如 HPE 的 IML.json、网络设备的日志缓冲区输出"
+          }
         }
       }
     },
     "redaction": {
       "type": "object",
       "required": ["applied"],
-      "description": "服务器日志包按设备原样保存（applied 为 false）；网络设备的命令输出在保存时遮盖了口令等内容，遮盖处写成 ******",
+      "description": "是否改动过日志内容。服务器和存储的日志包按设备原样保存，applied 为 false；网络设备的配置里的口令、团体名等收集时替换掉，applied 为 true",
       "properties": {
         "applied": { "type": "boolean" },
-        "rules": { "type": "array", "items": { "type": "string" }, "examples": [["password", "auth-key", "snmp-community", "ciphertext"]] }
+        "rules": { "type": "array", "items": { "type": "string" }, "description": "用了哪些脱敏规则", "examples": [["password", "snmp-community"]] }
       }
+    }
+  },
+  "$defs": {
+    "name": {
+      "type": "string",
+      "description": "只有一层的文件名：不含 / \\ : 和控制字符，不是 . 或 ..",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[^/\\\\:\\x00-\\x1f]+$",
+      "not": { "enum": [".", ".."] }
     }
   }
 }
